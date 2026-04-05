@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#183331">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PulseBoard">
+  <title>PulseBoard</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand-row">
+        <div class="brand-mark">PB</div>
+        <div>
+          <p class="eyebrow">Hybrid training coach</p>
+          <h1>PulseBoard</h1>
+        </div>
+      </div>
+      <div class="header-chip" id="today-date"></div>
+    </header>
+
+    <p class="intro-line">
+      Built for balancing strength, endurance, explosiveness, surfing, and recovery without turning every tired day into a full stop.
+    </p>
+
+    <div class="notice-card hidden" id="hosting-note">
+      <p class="eyebrow">For iPhone</p>
+      <p>
+        This version works best when it has a real web link. After that, you can open it in Safari and use
+        <strong>Share -> Add to Home Screen</strong>.
+      </p>
+    </div>
+
+    <main class="screen-stack">
+      <section class="screen is-active" data-screen="today">
+        <article class="hero-card">
+          <div class="hero-top">
+            <div>
+              <p class="eyebrow">Today</p>
+              <h2 id="today-headline">Train with direction</h2>
+            </div>
+            <div class="hero-score">
+              <span class="hero-score-value" id="readiness-score">--</span>
+              <span class="hero-score-label" id="readiness-label">Build</span>
+            </div>
+          </div>
+
+          <p class="hero-summary" id="today-summary">
+            The app will point you to the smartest productive option, not just tell you to stop.
+          </p>
+
+          <div class="quick-actions">
+            <button class="button button-secondary" type="button" data-go="log">Log workout</button>
+            <button class="button button-secondary" type="button" data-go="body">Body check-in</button>
+            <button class="button button-primary" type="button" id="today-advance-week">Advance week</button>
+          </div>
+        </article>
+
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Snapshot</p>
+              <h3>This week</h3>
+            </div>
+          </div>
+          <div class="metric-grid" id="metric-grid"></div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Guidance</p>
+              <h3>Keep momentum intelligently</h3>
+            </div>
+          </div>
+          <div class="stack-list" id="guidance-list"></div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Block</p>
+              <h3>Your current loop</h3>
+            </div>
+          </div>
+          <div id="active-block-card"></div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Recent</p>
+              <h3>Keep the story visible</h3>
+            </div>
+          </div>
+          <div class="stack-list" id="recent-workouts"></div>
+        </section>
+      </section>
+
+      <section class="screen" data-screen="log">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Log</p>
+            <h2>Fast when you need it, detailed when it matters</h2>
+          </div>
+        </div>
+
+        <section class="panel form-panel photo-import-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Handwritten notes</p>
+              <h3>Scan a workout from paper</h3>
+            </div>
+          </div>
+
+          <p class="helper-text">
+            Take a photo of your written notes. PulseBoard will read the text, detect the workout type, and preload a log so strength sets still count toward progress.
+          </p>
+
+          <div class="quick-actions tight">
+            <label class="button button-secondary file-button">
+              Take or choose photo
+              <input type="file" id="photo-import-input" accept="image/*" capture="environment" hidden>
+            </label>
+            <button class="button button-secondary compact hidden" type="button" id="photo-import-clear">Clear scan</button>
+          </div>
+
+          <div class="panel-mode hidden" id="photo-import-status"></div>
+
+          <div class="photo-import-result hidden" id="photo-import-result">
+            <img class="photo-import-preview hidden" id="photo-import-preview" alt="Preview of the scanned workout notes">
+            <div class="photo-import-summary" id="photo-import-summary"></div>
+
+            <label class="field">
+              <span>Recognized text</span>
+              <textarea id="photo-import-text" rows="6" placeholder="The recognized notes will appear here so you can correct anything before loading the workout."></textarea>
+            </label>
+
+            <div class="quick-actions tight">
+              <button class="button button-primary" type="button" id="photo-import-apply" disabled>Use in log</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="segment-control">
+          <button type="button" class="segment-button is-selected" data-log-mode="routine">Routine</button>
+          <button type="button" class="segment-button" data-log-mode="quick">Quick</button>
+        </div>
+
+        <section class="panel log-planner-panel" id="log-schedule-panel"></section>
+
+        <section class="timer-panel panel">
+          <div class="timer-card">
+            <div class="timer-card-head">
+              <div>
+                <p class="eyebrow">Workout timer</p>
+                <h4>Total session time</h4>
+              </div>
+              <div class="timer-value" id="routine-workout-timer">00:00:00</div>
+            </div>
+            <div class="helper-text" id="routine-workout-timer-note">Start the workout timer when you begin training. It will keep your total time updated automatically.</div>
+            <div class="quick-actions tight">
+              <button class="button button-primary compact" type="button" id="toggle-routine-workout-timer">Start workout</button>
+              <button class="button button-secondary compact" type="button" id="reset-routine-workout-timer">Reset</button>
+            </div>
+          </div>
+
+          <div class="timer-card">
+            <div class="timer-card-head">
+              <div>
+                <p class="eyebrow">Break timer</p>
+                <h4>Control your rest</h4>
+              </div>
+              <div class="timer-value timer-value-rest" id="routine-rest-timer">01:30</div>
+            </div>
+            <div class="helper-text" id="routine-rest-total">Rest logged: 0 min</div>
+            <div class="timer-preset-row" id="routine-rest-presets">
+              <button class="chip" type="button" data-rest-preset="90">90s</button>
+              <button class="chip is-selected" type="button" data-rest-preset="120">120s</button>
+              <button class="chip" type="button" data-rest-preset="180">180s</button>
+            </div>
+            <div class="quick-actions tight">
+              <button class="button button-primary compact" type="button" id="start-routine-rest-timer">Start break</button>
+              <button class="button button-secondary compact" type="button" id="add-routine-rest-time">+30 sec</button>
+              <button class="button button-secondary compact" type="button" id="stop-routine-rest-timer">Reset break</button>
+            </div>
+          </div>
+        </section>
+
+        <form id="routine-log-form" class="panel form-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Routine log</p>
+              <h3>Repeat your key sessions</h3>
+            </div>
+          </div>
+
+          <div class="panel-mode hidden" id="routine-log-edit-note"></div>
+          <div class="panel-mode hidden" id="routine-log-template-note"></div>
+
+          <div class="field-grid two-up">
+            <label class="field">
+              <span>Routine</span>
+              <select id="routine-log-select" required></select>
+            </label>
+
+            <label class="field">
+              <span>Date</span>
+              <input type="date" id="routine-log-date" required>
+            </label>
+
+            <label class="field">
+              <span>Duration (min)</span>
+              <input type="number" id="routine-log-duration" min="0" step="1" value="60">
+            </label>
+
+            <label class="field">
+              <span>Intensity (1-5)</span>
+              <input type="number" id="routine-log-intensity" min="1" max="5" step="1" value="3">
+            </label>
+          </div>
+
+          <div class="helper-text" id="routine-log-note"></div>
+
+          <div class="quick-actions tight">
+            <button class="button button-primary" type="button" id="start-guided-workout">Start workout flow</button>
+          </div>
+
+          <div class="exercise-stack" id="routine-exercise-fields"></div>
+
+          <div class="field">
+            <span>Loaded areas</span>
+            <div class="chip-group" id="routine-areas"></div>
+          </div>
+
+          <label class="field">
+            <span>Notes</span>
+            <textarea id="routine-log-notes" rows="3" placeholder="Strong day, shoulders tired from surf, front squat moved well..."></textarea>
+          </label>
+
+          <button class="button button-primary button-full" type="submit" id="routine-log-submit">Save routine session</button>
+          <button class="button button-secondary button-full hidden" type="button" id="cancel-routine-workout-edit">Cancel editing</button>
+        </form>
+
+        <form id="quick-log-form" class="panel form-panel hidden">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Quick log</p>
+              <h3>For run, bike, swim, surf, hike, or mixed days</h3>
+            </div>
+          </div>
+
+          <div class="panel-mode hidden" id="quick-log-edit-note"></div>
+
+          <div class="field-grid two-up">
+            <label class="field">
+              <span>Activity</span>
+              <select id="quick-kind"></select>
+            </label>
+
+            <label class="field">
+              <span>Date</span>
+              <input type="date" id="quick-date" required>
+            </label>
+
+            <label class="field">
+              <span>Duration (min)</span>
+              <input type="number" id="quick-duration" min="0" step="1" value="60">
+            </label>
+
+            <label class="field">
+              <span>Intensity (1-5)</span>
+              <input type="number" id="quick-intensity" min="1" max="5" step="1" value="3">
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Session title</span>
+            <input type="text" id="quick-title" placeholder="Optional">
+          </label>
+
+          <label class="field">
+            <span>Distance / load / whatever matters</span>
+            <input type="text" id="quick-metric" placeholder="72.5 kg, 10 km, 2,000 m, 4 x 6 min...">
+          </label>
+
+          <div class="field">
+            <span>Loaded areas</span>
+            <div class="chip-group" id="quick-areas"></div>
+          </div>
+
+          <label class="field">
+            <span>Notes</span>
+            <textarea id="quick-notes" rows="3" placeholder="Easy spin, rough surf, heavy legs, beautiful hike..."></textarea>
+          </label>
+
+          <button class="button button-primary button-full" type="submit" id="quick-log-submit">Save quick session</button>
+          <button class="button button-secondary button-full hidden" type="button" id="cancel-quick-workout-edit">Cancel editing</button>
+        </form>
+      </section>
+
+      <section class="screen" data-screen="routines">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Routines</p>
+            <h2>Store the repeatable parts so logging gets easier</h2>
+          </div>
+        </div>
+
+        <div class="quick-actions tight">
+          <button class="button button-secondary" type="button" id="toggle-routine-builder">New routine</button>
+          <button class="button button-secondary" type="button" id="toggle-block-builder">New block</button>
+        </div>
+
+        <section class="panel form-panel coach-plan-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Surf-First Base</p>
+              <h3>Build the week around energy, surf, work, and life</h3>
+            </div>
+          </div>
+
+          <p class="helper-text">
+            This base plan assumes surf is the first priority, work capacity has to stay high, social energy matters, and gym work should maintain strength without stealing freshness.
+          </p>
+
+          <div class="coach-plan-summary" id="surf-plan-summary"></div>
+
+          <div class="quick-actions tight">
+            <button class="button button-primary" type="button" id="install-surf-plan">Install surf-first base plan</button>
+          </div>
+
+          <div class="panel-mode hidden" id="surf-plan-status"></div>
+        </section>
+
+        <section class="panel form-panel calendar-sync-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Google Calendar</p>
+              <h3>Push the flexible weekly structure into your calendar</h3>
+            </div>
+          </div>
+
+          <p class="helper-text">
+            Sync creates a dedicated calendar with fixed work blocks plus flexible surf, training, grocery, meal-prep, and open-energy windows. Flexible items are marked as tentative so you can move them around surf conditions and social plans. Google sync works when PulseBoard is served from localhost or a hosted web address with your Google web OAuth client ID.
+          </p>
+
+          <div class="field-grid two-up">
+            <label class="field">
+              <span>Google OAuth client ID</span>
+              <input type="text" id="google-calendar-client-id" placeholder="Google web OAuth client ID">
+            </label>
+
+            <label class="field">
+              <span>Calendar name</span>
+              <input type="text" id="google-calendar-name" placeholder="PulseBoard Surf-First Base">
+            </label>
+
+            <label class="field">
+              <span>Sync start date</span>
+              <input type="date" id="google-calendar-start-date">
+            </label>
+
+            <label class="field">
+              <span>Weeks to sync</span>
+              <input type="number" id="google-calendar-weeks" min="1" max="12" step="1" value="6">
+            </label>
+          </div>
+
+          <label class="checkbox-row">
+            <input type="checkbox" id="google-calendar-cafe-shifts" checked>
+            <span>Add cafe work shifts from Monday, April 27, 2026 onward</span>
+          </label>
+
+          <div class="quick-actions tight">
+            <button class="button button-secondary" type="button" id="google-calendar-authorize">Connect Google Calendar</button>
+            <button class="button button-primary" type="button" id="google-calendar-sync">Sync surf-first plan</button>
+            <button class="button button-secondary" type="button" id="google-calendar-clear">Forget calendar link</button>
+          </div>
+
+          <div class="panel-mode hidden" id="google-calendar-status"></div>
+        </section>
+
+        <form id="routine-builder" class="panel form-panel hidden">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow" id="routine-builder-eyebrow">Create routine</p>
+              <h3 id="routine-builder-heading">Save a session you want to repeat</h3>
+            </div>
+          </div>
+
+          <div class="panel-mode hidden" id="routine-builder-mode-note"></div>
+
+          <div class="field-grid two-up">
+            <label class="field">
+              <span>Name</span>
+              <input type="text" id="builder-routine-name" required placeholder="Lower body power">
+            </label>
+
+            <label class="field">
+              <span>Routine type</span>
+              <select id="builder-routine-kind"></select>
+            </label>
+
+            <label class="field">
+              <span>Main session type</span>
+              <select id="builder-session-kind"></select>
+            </label>
+
+            <label class="field">
+              <span>Estimated minutes</span>
+              <input type="number" id="builder-routine-minutes" min="0" step="5" value="60">
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Notes</span>
+            <textarea id="builder-routine-notes" rows="3" placeholder="Main lower-body session. Log only the key sets."></textarea>
+          </label>
+
+          <div class="builder-header">
+            <div>
+              <p class="eyebrow">Exercises</p>
+              <h3>Only the lifts that matter for progress</h3>
+            </div>
+            <button class="button button-secondary compact" type="button" id="add-builder-exercise">Add exercise</button>
+          </div>
+          <div class="builder-stack" id="routine-exercise-builder"></div>
+
+          <div class="button-row">
+            <button class="button button-primary" type="submit" id="routine-builder-submit">Save routine</button>
+            <button class="button button-secondary hidden" type="button" id="cancel-routine-edit">Cancel</button>
+          </div>
+        </form>
+
+        <form id="block-builder" class="panel form-panel hidden">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow" id="block-builder-eyebrow">Create block</p>
+              <h3 id="block-builder-heading">Build your own weekly loop</h3>
+            </div>
+          </div>
+
+          <div class="panel-mode hidden" id="block-builder-mode-note"></div>
+
+          <div class="field-grid two-up">
+            <label class="field">
+              <span>Block name</span>
+              <input type="text" id="builder-block-name" required placeholder="Hybrid base loop">
+            </label>
+
+            <label class="field">
+              <span>Loop back to week 1</span>
+              <select id="builder-block-looping">
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Focus</span>
+            <textarea id="builder-block-focus" rows="2" placeholder="Balance endurance and strength while keeping speed alive."></textarea>
+          </label>
+
+          <div class="builder-header">
+            <div>
+              <p class="eyebrow">Weeks</p>
+              <h3>Your circuit / loop</h3>
+            </div>
+            <button class="button button-secondary compact" type="button" id="add-block-week">Add week</button>
+          </div>
+          <div class="builder-stack" id="block-weeks-builder"></div>
+
+          <div class="button-row">
+            <button class="button button-primary" type="submit" id="block-builder-submit">Save block</button>
+            <button class="button button-secondary hidden" type="button" id="cancel-block-edit">Cancel</button>
+          </div>
+        </form>
+
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Blocks</p>
+              <h3>Your training loops</h3>
+            </div>
+          </div>
+          <div class="stack-list" id="block-list"></div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Library</p>
+              <h3>Saved routines</h3>
+            </div>
+          </div>
+          <div class="stack-list" id="routine-list"></div>
+        </section>
+      </section>
+
+      <section class="screen" data-screen="progress">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Progress</p>
+            <h2>See the balance, not just the chaos</h2>
+          </div>
+        </div>
+
+        <section class="section-block">
+          <div class="metric-grid" id="progress-metrics"></div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Breakdown</p>
+              <h3>What is actually taking your energy?</h3>
+            </div>
+          </div>
+          <div class="stack-list" id="progress-breakdown"></div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Strength trends</p>
+              <h3>Key lifts and benchmarks</h3>
+            </div>
+          </div>
+          <div class="stack-list" id="exercise-trends"></div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Backup</p>
+              <h3>Keep your data safe</h3>
+            </div>
+          </div>
+          <div class="panel soft-panel">
+            <p class="helper-text">
+              This version keeps your data in the browser. Export a backup now and then, especially before moving to a new phone.
+            </p>
+            <div class="quick-actions tight">
+              <button class="button button-secondary" type="button" id="export-data">Export backup</button>
+              <label class="button button-secondary file-button">
+                Import backup
+                <input type="file" id="import-data" accept="application/json" hidden>
+              </label>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="screen" data-screen="body">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Body</p>
+            <h2>Give the app better context than just motivation</h2>
+          </div>
+        </div>
+
+        <form id="body-form" class="panel form-panel">
+          <div class="field-grid two-up">
+            <label class="field">
+              <span>Date</span>
+              <input type="date" id="body-date" required>
+            </label>
+
+            <label class="field">
+              <span>Sleep (hours)</span>
+              <input type="number" id="body-sleep" min="0" max="24" step="0.25" value="7.0">
+            </label>
+
+            <label class="field">
+              <span>Energy (1-5)</span>
+              <input type="number" id="body-energy" min="1" max="5" step="1" value="3">
+            </label>
+
+            <label class="field">
+              <span>Soreness (1-5)</span>
+              <input type="number" id="body-soreness" min="1" max="5" step="1" value="2">
+            </label>
+
+            <label class="field">
+              <span>Stress (1-5)</span>
+              <input type="number" id="body-stress" min="1" max="5" step="1" value="2">
+            </label>
+          </div>
+
+          <div class="field">
+            <span>Loaded areas</span>
+            <div class="chip-group" id="body-areas"></div>
+          </div>
+
+          <label class="field">
+            <span>Notes</span>
+            <textarea id="body-notes" rows="3" placeholder="Upper body is cooked, legs are okay, poor sleep, low stress..."></textarea>
+          </label>
+
+          <button class="button button-primary button-full" type="submit">Save body check-in</button>
+        </form>
+
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Recent body reads</p>
+              <h3>Recovery with context</h3>
+            </div>
+          </div>
+          <div class="stack-list" id="body-history"></div>
+        </section>
+      </section>
+    </main>
+
+    <nav class="tabbar">
+      <button class="tab-button is-active" type="button" data-screen-target="today">
+        <span class="tab-icon">Sun</span>
+        <span class="tab-label">Today</span>
+      </button>
+      <button class="tab-button" type="button" data-screen-target="log">
+        <span class="tab-icon">Log</span>
+        <span class="tab-label">Log</span>
+      </button>
+      <button class="tab-button" type="button" data-screen-target="routines">
+        <span class="tab-icon">Plan</span>
+        <span class="tab-label">Routines</span>
+      </button>
+      <button class="tab-button" type="button" data-screen-target="progress">
+        <span class="tab-icon">Rise</span>
+        <span class="tab-label">Progress</span>
+      </button>
+      <button class="tab-button" type="button" data-screen-target="body">
+        <span class="tab-icon">Body</span>
+        <span class="tab-label">Body</span>
+      </button>
+    </nav>
+  </div>
+
+  <section class="guided-workout hidden" id="guided-workout-panel" aria-live="polite">
+    <div class="guided-workout-shell">
+      <section class="guided-overview-screen hidden" id="guided-overview-panel">
+        <article class="guided-overview-card">
+          <p class="eyebrow">Starting now</p>
+          <h2 id="guided-overview-title">Workout</h2>
+          <div class="guided-overview-meta">
+            <span class="small-tag" id="guided-overview-kind">Strength</span>
+            <span class="small-tag" id="guided-overview-equipment">Mixed equipment</span>
+          </div>
+          <div class="helper-text" id="guided-overview-source">Routine overview</div>
+          <div class="guided-overview-list" id="guided-overview-list"></div>
+          <div class="button-row">
+            <button class="button button-primary" type="button" id="guided-dismiss-overview">Start first exercise</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="guided-workout-stage">
+        <div class="guided-workout-head">
+          <button class="button button-secondary compact" type="button" id="guided-workout-close">Back to log</button>
+          <button class="button button-secondary compact" type="button" id="guided-workout-pause">Pause</button>
+        </div>
+
+        <div class="guided-stage-topline">
+          <div class="guided-stage-sessionline">
+            <span id="guided-session-timer">00:00:00</span>
+            <span class="guided-stage-dot">•</span>
+            <span id="guided-session-effort">--%</span>
+          </div>
+          <div class="guided-stage-progress" id="guided-exercise-progress">Exercise 1 of 1</div>
+        </div>
+
+        <div class="guided-stage-status" id="guided-exercise-status">Timer status</div>
+
+        <div class="guided-stage-meter-wrap">
+          <div class="guided-stage-meter-ring" id="guided-stage-meter-ring">
+            <div class="guided-stage-meter-core">
+              <div class="guided-stage-meter-label" id="guided-stage-meter-label">Break timer</div>
+              <div class="guided-stage-meter-value" id="guided-exercise-timer">00:00</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="guided-stage-footer">
+          <div class="guided-stage-stat">
+            <div class="guided-stage-stat-value" id="guided-hero-reps">--</div>
+            <div class="guided-stage-stat-label">reps</div>
+          </div>
+
+          <div class="guided-stage-exercise">
+            <div class="list-title" id="guided-exercise-name">Exercise</div>
+            <div class="list-meta" id="guided-exercise-target">Target</div>
+          </div>
+
+          <div class="guided-stage-stat">
+            <div class="guided-stage-stat-value" id="guided-hero-secondary-value">--</div>
+            <div class="guided-stage-stat-label" id="guided-hero-secondary-label">weight</div>
+          </div>
+        </div>
+
+        <div class="guided-stage-tools">
+          <span class="exercise-tool is-static" id="guided-exercise-equipment">Equipment</span>
+          <button class="exercise-tool" type="button" data-guided-panel="history">History</button>
+          <button class="exercise-tool" type="button" data-guided-panel="notes">Notes</button>
+          <button class="exercise-tool" type="button" data-guided-panel="details">Set details</button>
+        </div>
+
+        <div class="guided-stage-bottomline">
+          <span class="small-tag" id="guided-exercise-kind">Lift</span>
+          <div class="guided-stage-action-buttons">
+            <button class="guided-skip-button hidden" type="button" id="guided-skip-break">Skip break</button>
+            <button class="guided-scroll-button" type="button" id="guided-open-tracking">Scroll for tracking</button>
+          </div>
+        </div>
+      </section>
+
+      <article class="guided-tracking-sheet" id="guided-tracking-sheet">
+        <div class="guided-workout-meta">
+          <p class="eyebrow" id="guided-workout-kicker">Workout flow</p>
+          <h2 id="guided-workout-title">Workout</h2>
+        </div>
+
+        <div class="helper-text hidden" id="guided-exercise-template-note"></div>
+
+        <div class="exercise-roller-grid" id="guided-workout-fields"></div>
+
+        <div class="exercise-tools">
+          <button class="exercise-tool" type="button" data-guided-panel="history">History</button>
+          <button class="exercise-tool" type="button" data-guided-panel="notes">Notes</button>
+          <button class="exercise-tool" type="button" data-guided-panel="details">Set details</button>
+        </div>
+
+        <div class="exercise-panel hidden" data-guided-panel-view="history" id="guided-history-panel"></div>
+
+        <label class="field exercise-panel hidden" data-guided-panel-view="notes">
+          <span>Exercise note</span>
+          <textarea rows="3" id="guided-note-input" placeholder="Technique, setup, pain, machine, strong, ugly..."></textarea>
+        </label>
+
+          <div class="exercise-panel hidden" data-guided-panel-view="details">
+            <div class="exercise-set-list" id="guided-set-list"></div>
+            <div class="mini-actions">
+            <button class="button button-secondary compact" type="button" id="guided-add-set">Add extra set</button>
+            </div>
+          </div>
+
+        <div class="button-row">
+          <button class="button button-secondary" type="button" id="guided-prev-exercise">Previous</button>
+          <button class="button button-primary" type="button" id="guided-next-exercise">Next exercise</button>
+        </div>
+
+        <div class="button-row">
+          <button class="button button-secondary" type="button" id="guided-save-workout">Save workout</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="workout-summary hidden" id="workout-summary-panel" aria-live="polite">
+    <div class="workout-summary-shell">
+      <div class="workout-summary-head">
+        <p class="eyebrow">Workout complete</p>
+        <h2 id="workout-summary-title">Progress overview</h2>
+        <div class="helper-text" id="workout-summary-subtitle">See what moved today</div>
+      </div>
+
+      <div class="guided-overview-meta">
+        <span class="small-tag" id="workout-summary-completion">100% complete</span>
+        <span class="small-tag" id="workout-summary-progress">0% up</span>
+        <span class="small-tag" id="workout-summary-prs">0 PRs</span>
+      </div>
+
+      <div class="workout-summary-list" id="workout-summary-list"></div>
+
+      <div class="button-row">
+        <button class="button button-primary" type="button" id="workout-summary-close">Back to app</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="exercise-progress hidden" id="exercise-progress-panel" aria-live="polite">
+    <div class="exercise-progress-shell">
+      <div class="exercise-progress-head">
+        <button class="button button-secondary compact" type="button" id="exercise-progress-back">Back to overview</button>
+        <button class="button button-secondary compact" type="button" id="exercise-progress-close">Done</button>
+      </div>
+
+      <div class="exercise-progress-titleblock">
+        <p class="eyebrow">Exercise progress</p>
+        <h2 id="exercise-progress-title">Exercise</h2>
+      </div>
+
+      <div class="exercise-progress-filters" id="exercise-progress-filters"></div>
+
+      <div class="exercise-progress-hero">
+        <div>
+          <div class="exercise-progress-hero-value" id="exercise-progress-hero-value">--</div>
+          <div class="helper-text" id="exercise-progress-hero-label">Estimated 1RM</div>
+        </div>
+        <div class="exercise-progress-hero-side">
+          <div class="exercise-progress-hero-change" id="exercise-progress-hero-change">--</div>
+          <div class="helper-text" id="exercise-progress-hero-subtitle">Since you started</div>
+        </div>
+      </div>
+
+      <div class="exercise-progress-chart" id="exercise-progress-chart"></div>
+
+      <div class="exercise-progress-metrics" id="exercise-progress-metrics"></div>
+
+      <div class="exercise-progress-history">
+        <div class="list-title">History</div>
+        <div class="exercise-progress-history-list" id="exercise-progress-history-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
+  <script src="app.js"></script>
+</body>
+</html>
