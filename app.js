@@ -56,13 +56,13 @@ const bodyAreas = [
 ];
 
 const workoutImportKeywords = {
-  strength: ["strength", "gym", "squat", "bench", "deadlift", "rdl", "press", "row", "pull up", "chin up", "kg", "kgs", "lb", "lbs", "reps", "sets"],
+  strength: ["strength", "gym", "squat", "bench", "deadlift", "rdl", "press", "row", "pull up", "chin up", "pull down", "lat pd", "dips", "lunges", "leg ex", "ham curl", "kg", "kgs", "lb", "lbs", "reps", "sets"],
   explosive: ["explosive", "power", "sprint", "jump", "jumps", "bound", "bounds", "plyo", "throw", "slam", "med ball"],
   run: ["run", "running", "jog", "tempo", "track", "interval", "fartlek", "pace", "km", "mile", "miles"],
   bike: ["bike", "cycling", "ride", "trainer", "watts", "rpm", "cadence"],
   swim: ["swim", "swimming", "pool", "freestyle", "laps", "stroke"],
   surf: ["surf", "waves", "paddle out", "paddling"],
-  functional: ["functional", "circuit", "wod", "amrap", "emom", "metcon"],
+  functional: ["functional", "circuit", "wod", "amrap", "emom", "metcon", "cali", "calisthenics", "human flag", "handstand", "dead hang"],
   mobility: ["mobility", "stretch", "yoga", "flow", "warm up", "cool down"],
   hike: ["hike", "trail", "elevation", "climb", "ascent"],
   recovery: ["recovery", "walk", "easy", "restorative"]
@@ -70,35 +70,48 @@ const workoutImportKeywords = {
 
 const importedExerciseAliases = [
   { pattern: /\bfront\s*squat\b/i, name: "Front Squat", areas: ["legs", "glutes", "core"] },
+  { pattern: /\bhack\s*squat\b/i, name: "Hack Squat", areas: ["legs", "glutes"] },
+  { pattern: /\bgoblet\s*squat\b/i, name: "Goblet Squat", areas: ["legs", "glutes", "core"] },
+  { pattern: /\b(?:bgss|bss|bulgarian)\b/i, name: "Bulgarian Split Squat", areas: ["legs", "glutes", "core"] },
   { pattern: /\b(?:back\s*squat|bb\s*squat|squat)\b/i, name: "Back Squat", areas: ["legs", "glutes", "core"] },
-  { pattern: /\bbgss\b|\bbulgarian\b/i, name: "Bulgarian Split Squat", areas: ["legs", "glutes", "core"] },
   { pattern: /\bromanian\s*deadlift\b|\brdl\b/i, name: "Romanian Deadlift", areas: ["legs", "glutes", "back"] },
   { pattern: /\bdeadlift\b/i, name: "Deadlift", areas: ["legs", "glutes", "back", "core"] },
-  { pattern: /\bhip\s*thrust\b/i, name: "Hip Thrust", areas: ["glutes", "legs", "core"] },
+  { pattern: /\bhip\s*(?:thrust|trust)s?\b/i, name: "Hip Thrust", areas: ["glutes", "legs", "core"] },
   { pattern: /\bleg\s*press\b/i, name: "Leg Press", areas: ["legs", "glutes"] },
+  { pattern: /\b(?:step[\s-]*ups?)\b/i, name: "Step-Up", areas: ["legs", "glutes", "core"] },
   { pattern: /\b(?:leg|ham)\s*curl\b/i, name: "Leg Curl", areas: ["legs"] },
-  { pattern: /\bleg(?:\s*ex|\s*extension)\b/i, name: "Leg Extension", areas: ["legs"] },
+  { pattern: /\bleg(?:\s*ex|\s*extension)\b|\bquad\s*raise\b/i, name: "Leg Extension", areas: ["legs"] },
   { pattern: /\bcalf\s*raise\b/i, name: "Calf Raise", areas: ["legs"] },
-  { pattern: /\bbulgarian\b/i, name: "Bulgarian Split Squat", areas: ["legs", "glutes", "core"] },
-  { pattern: /\blunge\b/i, name: "Walking Lunge", areas: ["legs", "glutes", "core"] },
+  { pattern: /\b(?:walking\s*)?l(?:ou)?nges?\b/i, name: "Walking Lunge", areas: ["legs", "glutes", "core"] },
+  { pattern: /\bkick\s*backs?\b|\bpush\s*backs?\b/i, name: "Cable Kickback", areas: ["glutes", "legs"] },
+  { pattern: /\b(?:back|bootie|lower\s*back)\s*(?:ex|extension)s?\b/i, name: "Back Extension", areas: ["glutes", "back", "core"] },
+  { pattern: /\bincline\b/i, name: "Incline Bench Press", areas: ["chest", "shoulders", "arms"] },
   { pattern: /\b(?:db|pb)\s*bench\b/i, name: "Dumbbell Bench Press", areas: ["chest", "shoulders", "arms"] },
   { pattern: /\bbench\b/i, name: "Bench Press", areas: ["chest", "shoulders", "arms"] },
-  { pattern: /\bincline\b/i, name: "Incline Press", areas: ["chest", "shoulders", "arms"] },
-  { pattern: /\boverhead\s*press\b|\bohp\b|\bshoulder\s*press\b/i, name: "Overhead Press", areas: ["shoulders", "arms", "core"] },
+  { pattern: /\bmil(?:itary)?\s*press\b/i, name: "Military Press", areas: ["shoulders", "arms", "core"] },
+  { pattern: /\boverhead\s*press\b|\bohp\b|\bshoulder\s*press\b/i, name: "Shoulder Press", areas: ["shoulders", "arms", "core"] },
   { pattern: /\bpush\s*press\b/i, name: "Push Press", areas: ["shoulders", "arms", "core"] },
   { pattern: /\blandmine\b/i, name: "Landmine Press", areas: ["shoulders", "chest", "arms", "core"] },
+  { pattern: /\bchest\s*supported\s*row\b/i, name: "Chest-Supported Row", areas: ["back", "arms"] },
+  { pattern: /\b(?:single[\s-]*arm|one[\s-]*arm)\s*row\b/i, name: "Single-Arm Row", areas: ["back", "arms", "core"] },
   { pattern: /\bassisted\s*row\b/i, name: "Assisted Row", areas: ["back", "arms"] },
-  { pattern: /\bseated\s*row\b/i, name: "Seated Row", areas: ["back", "arms"] },
+  { pattern: /\bcable\s*row\b|\bseated\s*row\b/i, name: "Seated Row", areas: ["back", "arms"] },
+  { pattern: /\bbent\s*over\s*row\b|\bbb\s*row\b/i, name: "Bent-Over Row", areas: ["back", "arms", "core"] },
   { pattern: /\brow\b/i, name: "Row", areas: ["back", "arms"] },
   { pattern: /\bpull[\s-]*ups?\b|\bchin[\s-]*ups?\b/i, name: "Pull-Up", areas: ["back", "arms", "core"] },
+  { pattern: /\bdead\s*hangs?\b|\bhang(?:ing)?\b(?!\s*leg)/i, name: "Dead Hang", areas: ["back", "arms", "core"] },
   { pattern: /\bstraight\s*arm\s*lat\s*(?:pd|pull)/i, name: "Straight-Arm Lat Pulldown", areas: ["back", "arms"] },
-  { pattern: /\blat\s*(?:pull[\s-]*down|pull\s*down|pd)\b/i, name: "Lat Pulldown", areas: ["back", "arms"] },
-  { pattern: /\bface\s*pull\b/i, name: "Face Pull", areas: ["back", "shoulders", "arms"] },
-  { pattern: /\blat(?:eral)?\s*raise\b/i, name: "Lateral Raise", areas: ["shoulders", "arms"] },
+  { pattern: /\blat\s*(?:pull[\s-]*down|pull\s*down|pd)\b|\bpull\s*down\b|\bchin\s*machine\b/i, name: "Lat Pulldown", areas: ["back", "arms"] },
+  { pattern: /\bface\s*pull\b|\brear\s*delt\s*fly\b|\breverse\s*pec\s*deck\b/i, name: "Face Pull", areas: ["back", "shoulders", "arms"] },
+  { pattern: /\blat(?:eral)?\s*raise\b|\bfront\s*raise\b|\bcable\s*lateral\s*raise\b/i, name: "Lateral Raise", areas: ["shoulders", "arms"] },
   { pattern: /\bcurl\b/i, name: "Curl", areas: ["arms"] },
+  { pattern: /\btriceps?\s*extension\b/i, name: "Triceps Extension", areas: ["arms"] },
   { pattern: /\btriceps?\b|\bpushdown\b/i, name: "Triceps Pushdown", areas: ["arms"] },
   { pattern: /\bdips?\b/i, name: "Dips", areas: ["chest", "shoulders", "arms"] },
+  { pattern: /\bweighted\s*plank\b/i, name: "Weighted Plank", areas: ["core"] },
   { pattern: /\bplank\b/i, name: "Plank", areas: ["core"] },
+  { pattern: /\bleg\s*raises?\b|\bhanging\s*leg\s*raises?\b|\bdragon\s*flag\b/i, name: "Leg Raise", areas: ["core"] },
+  { pattern: /\bhandstand\b|\bhspu\b|\bhuman\s*flag\b/i, name: "Upper Skill Work", areas: ["shoulders", "arms", "core"] },
   { pattern: /\bbox\s*jump\b/i, name: "Box Jump", areas: ["legs", "core"] },
   { pattern: /\bbounds?\b/i, name: "Bounds", areas: ["legs", "core"] },
   { pattern: /\bhill\s*sprint\b|\bsprint\b/i, name: "Sprint", areas: ["legs", "core"] },
@@ -109,6 +122,36 @@ const SURF_FIRST_BLOCK_KEY = "surf-first-cafe-season-v1";
 const SURF_FIRST_CALENDAR_SOURCE = "pulseboard-surf-first-v1";
 const SURF_FIRST_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar";
 const CAFE_SEASON_START = "2026-04-27";
+const PERSONAL_PLAN_LOOKBACK_DAYS = 112;
+const PERSONAL_PLAN_MIN_HISTORY_WORKOUTS = 12;
+const PERSONAL_HISTORY_BASELINE = {
+  minimumLowerSessions: 2,
+  minimumUpperSessions: 2,
+  minimumQualityRuns: 1,
+  supportsOptionalLongRun: true,
+  preferredLowerSplit: ["quad-biased squat", "posterior-chain"],
+  preferredUpperSplit: ["calisthenics pull + dips", "gym upper balance"],
+  timeCapMinutes: 75,
+  fallbackExercises: {
+    lowerSquat: "Back Squat",
+    lowerQuadPress: "Hack Squat",
+    lowerPosteriorMain: "Romanian Deadlift",
+    lowerPosteriorSupport: "Hip Thrust",
+    lowerSingle: "Bulgarian Split Squat",
+    lowerQuadAccessory: "Leg Extension",
+    lowerHamAccessory: "Hamstring Curl",
+    lowerCalves: "Calf Raise",
+    upperPullMain: "Pull-Up",
+    upperGymPull: "Lat Pulldown",
+    upperRow: "Row",
+    upperPressMain: "Bench Press",
+    upperDip: "Dips",
+    upperVerticalPress: "Shoulder Press",
+    upperAccessory: "Lateral Raise",
+    upperScap: "Face Pull",
+    core: "Weighted Plank"
+  }
+};
 
 const refs = {
   todayDate: document.querySelector("#today-date"),
@@ -143,6 +186,7 @@ const refs = {
   routineLogIntensity: document.querySelector("#routine-log-intensity"),
   routineLogNote: document.querySelector("#routine-log-note"),
   startGuidedWorkout: document.querySelector("#start-guided-workout"),
+  addRoutineExercise: document.querySelector("#add-routine-exercise"),
   routineWorkoutTimer: document.querySelector("#routine-workout-timer"),
   routineWorkoutTimerNote: document.querySelector("#routine-workout-timer-note"),
   toggleRoutineWorkoutTimer: document.querySelector("#toggle-routine-workout-timer"),
@@ -263,6 +307,8 @@ const refs = {
   guidedNoteInput: document.querySelector("#guided-note-input"),
   guidedSetList: document.querySelector("#guided-set-list"),
   guidedAddSet: document.querySelector("#guided-add-set"),
+  guidedAddExercise: document.querySelector("#guided-add-exercise"),
+  guidedSkipPhase: document.querySelector("#guided-skip-phase"),
   guidedPrevExercise: document.querySelector("#guided-prev-exercise"),
   guidedNextExercise: document.querySelector("#guided-next-exercise"),
   guidedSaveWorkout: document.querySelector("#guided-save-workout"),
@@ -404,6 +450,9 @@ function wireEvents() {
     if (ui.guidedWorkout.active) {
       clearGuidedWorkout();
     }
+    if (ui.activeRoutineLogTemplate?.sourceType === "routine") {
+      clearRoutineLogTemplate();
+    }
     syncRoutineLogForm({ fromSelection: true });
   });
 
@@ -446,7 +495,9 @@ function wireEvents() {
       if (card && setList) {
         appendExerciseSetRow(setList, {
           targetReps: card.dataset.targetReps || "",
-          defaultWeight: currentExerciseCardSetWeight(card)
+          defaultWeight: currentExerciseCardSetWeight(card),
+          defaultSetSeconds: currentExerciseCardSetSeconds(card),
+          defaultRestSeconds: currentExerciseCardRestSeconds(card)
         });
       }
       return;
@@ -455,7 +506,11 @@ function wireEvents() {
     if (addFollowupButton) {
       const row = addFollowupButton.closest("[data-set-row]");
       const card = addFollowupButton.closest("[data-exercise-name]");
-      appendExerciseFollowupRow(row, { defaultWeight: currentExerciseCardSetWeight(card) });
+      appendExerciseFollowupRow(row, {
+        defaultWeight: currentExerciseCardSetWeight(card),
+        defaultSetSeconds: currentExerciseCardSetSeconds(card),
+        defaultRestSeconds: currentExerciseCardRestSeconds(card)
+      });
       return;
     }
 
@@ -468,7 +523,9 @@ function wireEvents() {
           const card = setList.closest("[data-exercise-name]");
           appendExerciseSetRow(setList, {
             targetReps: card?.dataset.targetReps || "",
-            defaultWeight: currentExerciseCardSetWeight(card)
+            defaultWeight: currentExerciseCardSetWeight(card),
+            defaultSetSeconds: currentExerciseCardSetSeconds(card),
+            defaultRestSeconds: currentExerciseCardRestSeconds(card)
           });
         }
         renumberExerciseSetRows(setList);
@@ -485,6 +542,7 @@ function wireEvents() {
   refs.photoImportText.addEventListener("input", handlePhotoImportTextInput);
   refs.photoImportApply.addEventListener("click", applyPhotoImportDraft);
   refs.startGuidedWorkout.addEventListener("click", openGuidedWorkout);
+  refs.addRoutineExercise.addEventListener("click", () => addExerciseToCurrentSession());
   refs.cancelQuickWorkoutEdit.addEventListener("click", cancelWorkoutEdit);
   refs.cancelRoutineWorkoutEdit.addEventListener("click", cancelWorkoutEdit);
   refs.toggleRoutineWorkoutTimer.addEventListener("click", toggleRoutineWorkoutTimer);
@@ -805,8 +863,10 @@ function wireEvents() {
   refs.guidedNextExercise.addEventListener("click", advanceGuidedWorkout);
   refs.guidedSaveWorkout.addEventListener("click", saveGuidedWorkout);
   refs.guidedAddSet.addEventListener("click", appendGuidedSetRow);
+  refs.guidedAddExercise.addEventListener("click", () => addExerciseToCurrentSession({ jumpToGuidedExercise: true }));
   refs.guidedDismissOverview.addEventListener("click", dismissGuidedOverview);
   refs.guidedSkipBreak.addEventListener("click", skipGuidedBreakEarly);
+  refs.guidedSkipPhase.addEventListener("click", skipGuidedCurrentPhase);
   refs.guidedOpenTracking.addEventListener("click", scrollGuidedTrackingIntoView);
   refs.guidedWorkoutPanel.addEventListener("click", handleGuidedWorkoutClick);
   refs.guidedWorkoutPanel.addEventListener("change", handleGuidedWorkoutChange);
@@ -886,6 +946,7 @@ function createGuidedWorkoutState() {
     exerciseIndex: 0,
     renderedExerciseIndex: -1,
     enteredExerciseAt: null,
+    frozenExerciseElapsedSeconds: null,
     templateTitle: "",
     templateSourceLabel: "",
     templateKind: "strength",
@@ -1263,6 +1324,42 @@ function cloneExerciseTemplates(exercises = []) {
   }));
 }
 
+function ensureEditableRoutineLogTemplate() {
+  const template = currentRoutineLogTemplate();
+  if (!template) {
+    return null;
+  }
+
+  if (ui.activeRoutineLogTemplate) {
+    return ui.activeRoutineLogTemplate;
+  }
+
+  const workingTemplate = {
+    ...template,
+    exercises: cloneExerciseTemplates(template.exercises || [])
+  };
+  setRoutineLogTemplate(workingTemplate);
+  return workingTemplate;
+}
+
+function promptForSessionExerciseName() {
+  const value = window.prompt("Exercise name");
+  return value ? value.trim() : "";
+}
+
+function buildAdHocExerciseTemplate(name, sessionKind = "strength") {
+  const isLiftStyle = liftSessionKinds.has(sessionKind);
+
+  return hydrateExerciseTemplate({
+    id: uid(),
+    name,
+    targetSets: isLiftStyle ? 3 : 1,
+    targetReps: isLiftStyle ? "8-10" : "",
+    notes: "",
+    targetRestSeconds: isLiftStyle ? ui.routineTimer.restPresetSeconds : null
+  }, sessionKind);
+}
+
 function findPlannedSessionRecord(sessionId) {
   for (const block of state.blocks) {
     for (const week of block.weeks || []) {
@@ -1385,55 +1482,79 @@ function collectExerciseSetLogsFromContainer(container, { includeUntouched = fal
     });
     const weightValue = row.querySelector("[data-set-weight]")?.value;
     const repsValue = row.querySelector("[data-set-reps]")?.value;
+    const setSecondsValue = row.querySelector("[data-set-log-seconds]")?.value;
+    const restSecondsValue = row.querySelector("[data-set-log-rest-seconds]")?.value;
     const weight = weightValue === "" ? null : Number(weightValue);
     const reps = repsValue === "" ? null : Number(repsValue);
+    const setSeconds = setSecondsValue === "" ? null : Number(setSecondsValue);
+    const restSeconds = restSecondsValue === "" ? null : Number(restSecondsValue);
     const expectedWeight = resolveSetTemplateAutoWeight(setLog, mainWeight);
+    const expectedSetSeconds = normalizeSelectNumber(row.dataset.defaultSetSeconds);
+    const expectedRestSeconds = normalizeSelectNumber(row.dataset.defaultRestSeconds);
     const isUntouchedSuggestedWeight = reps == null
       && weight != null
       && expectedWeight != null
       && Math.abs(weight - expectedWeight) < 0.001;
+    const hasTimingChange = (setSeconds != null || restSeconds != null)
+      && (
+        (setSeconds ?? null) !== (expectedSetSeconds ?? null)
+        || (restSeconds ?? null) !== (expectedRestSeconds ?? null)
+      );
 
-    if (!includeUntouched && ((weight == null && reps == null) || isUntouchedSuggestedWeight)) {
+    if (
+      !includeUntouched
+      && !hasTimingChange
+      && ((weight == null && reps == null) || isUntouchedSuggestedWeight)
+    ) {
       return null;
     }
 
     return {
       ...setLog,
       weight: Number.isFinite(weight) ? weight : null,
-      reps: Number.isFinite(reps) ? reps : null
+      reps: Number.isFinite(reps) ? reps : null,
+      setSeconds: Number.isFinite(setSeconds) ? setSeconds : expectedSetSeconds,
+      restSeconds: Number.isFinite(restSeconds) ? restSeconds : expectedRestSeconds
     };
   }).filter(Boolean);
+}
+
+function buildGuidedWorkoutDraft(exercise, card, templateKind) {
+  const latestEntry = getPreviousExerciseEntry(exercise.name);
+  const suggestedWeight = getSuggestedExerciseWeight(exercise, templateKind, { latestEntry });
+  const summary = card
+    ? summarizeExerciseSetLogs(collectExerciseSetLogsFromContainer(card.querySelector("[data-set-list]")))
+    : { keyWeight: null, reps: null };
+  const draftSetLogs = card
+    ? collectExerciseSetLogsFromContainer(card.querySelector("[data-set-list]"), { includeUntouched: true })
+    : [];
+
+  return {
+    ...normalizeExerciseTemplate(exercise),
+    templateNote: exercise.notes || "",
+    noteValue: card?.querySelector("[data-note]")?.value.trim() || "",
+    repsValue: card?.querySelector("[data-reps-picker]")?.value || exercise.targetLogReps || summary.reps || "",
+    effortPercentValue: card?.querySelector("[data-effort-percent]")?.value || exercise.targetEffortPercent || "",
+    weightValue: card?.querySelector("[data-lift-weight]")?.value || suggestedWeight || exercise.targetWeight || summary.keyWeight || "",
+    setSecondsValue: card?.querySelector("[data-set-seconds]")?.value || exercise.targetSetSeconds || inferSetSecondsFromExercise(exercise),
+    restTargetSecondsValue: card?.querySelector("[data-rest-seconds]")?.value || exercise.targetRestSeconds || "",
+    restSecondsValue: "",
+    setLogs: draftSetLogs.length
+      ? draftSetLogs
+      : buildExerciseSetDraftsFromTemplate(exercise, {
+        defaultWeight: suggestedWeight,
+        defaultSetSeconds: exercise.targetSetSeconds ?? inferSetSecondsFromExercise(exercise),
+        defaultRestSeconds: exercise.targetRestSeconds ?? ""
+      })
+  };
 }
 
 function buildGuidedWorkoutDrafts(template) {
   const cards = [...refs.routineExerciseFields.querySelectorAll("[data-exercise-name]")];
 
-  return (template?.exercises || []).map((exercise, index) => {
-    const card = cards[index];
-    const latestEntry = getPreviousExerciseEntry(exercise.name);
-    const suggestedWeight = getSuggestedExerciseWeight(exercise, template?.kind, { latestEntry });
-    const summary = card
-      ? summarizeExerciseSetLogs(collectExerciseSetLogsFromContainer(card.querySelector("[data-set-list]")))
-      : { keyWeight: null, reps: null };
-    const draftSetLogs = card
-      ? collectExerciseSetLogsFromContainer(card.querySelector("[data-set-list]"), { includeUntouched: true })
-      : [];
-
-    return {
-      ...normalizeExerciseTemplate(exercise),
-      templateNote: exercise.notes || "",
-      noteValue: card?.querySelector("[data-note]")?.value.trim() || "",
-      repsValue: card?.querySelector("[data-reps-picker]")?.value || exercise.targetLogReps || summary.reps || "",
-      effortPercentValue: card?.querySelector("[data-effort-percent]")?.value || exercise.targetEffortPercent || "",
-      weightValue: card?.querySelector("[data-lift-weight]")?.value || suggestedWeight || exercise.targetWeight || summary.keyWeight || "",
-      setSecondsValue: card?.querySelector("[data-set-seconds]")?.value || exercise.targetSetSeconds || inferSetSecondsFromExercise(exercise),
-      restTargetSecondsValue: card?.querySelector("[data-rest-seconds]")?.value || exercise.targetRestSeconds || "",
-      restSecondsValue: card?.querySelector("[data-rest-seconds]")?.value || exercise.targetRestSeconds || "",
-      setLogs: draftSetLogs.length
-        ? draftSetLogs
-        : buildExerciseSetDraftsFromTemplate(exercise, { defaultWeight: suggestedWeight })
-    };
-  });
+  return (template?.exercises || []).map((exercise, index) => (
+    buildGuidedWorkoutDraft(exercise, cards[index], template?.kind)
+  ));
 }
 
 function currentGuidedWorkoutDraft() {
@@ -1441,11 +1562,78 @@ function currentGuidedWorkoutDraft() {
 }
 
 function currentGuidedExerciseElapsedSeconds() {
+  if (ui.guidedWorkout.frozenExerciseElapsedSeconds != null) {
+    return ui.guidedWorkout.frozenExerciseElapsedSeconds;
+  }
+
   if (!ui.guidedWorkout.active || !ui.guidedWorkout.enteredExerciseAt) {
     return 0;
   }
 
   return Math.max(0, Math.floor((Date.now() - ui.guidedWorkout.enteredExerciseAt) / 1000));
+}
+
+function buildGuidedExercisePhaseSequence(draft = currentGuidedWorkoutDraft()) {
+  const safeDraft = draft || {};
+  return buildExercisePhaseSequence(safeDraft, {
+    targetReps: safeDraft.targetReps || "",
+    defaultWeight: normalizeSelectNumber(safeDraft.weightValue) ?? safeDraft.targetWeight,
+    defaultSetSeconds: guidedExerciseSetTargetSeconds(safeDraft),
+    defaultRestSeconds: guidedExerciseRestTargetSeconds(safeDraft)
+  });
+}
+
+function buildGuidedExercisePhaseState(draft = currentGuidedWorkoutDraft()) {
+  const autoElapsed = currentGuidedExerciseElapsedSeconds();
+  const defaultSetSeconds = guidedExerciseSetTargetSeconds(draft);
+  const defaultRestSeconds = guidedExerciseRestTargetSeconds(draft);
+  const sequence = buildGuidedExercisePhaseSequence(draft);
+  const phases = sequence.phases || [];
+  const currentPhaseIndex = phases.findIndex((item) => autoElapsed < item.endOffsetSeconds);
+  const resolvedPhaseIndex = currentPhaseIndex >= 0
+    ? currentPhaseIndex
+    : (phases.length ? phases.length - 1 : -1);
+  const currentPhase = resolvedPhaseIndex >= 0 ? phases[resolvedPhaseIndex] : null;
+  const nextPhase = resolvedPhaseIndex >= 0 ? phases[resolvedPhaseIndex + 1] || null : null;
+  const plannedWorkSeconds = sequence.totalWorkSeconds;
+  const plannedRestSeconds = sequence.totalRestSeconds;
+  const totalDurationSeconds = sequence.totalDurationSeconds;
+  const phaseBudget = currentPhase?.durationSeconds || 0;
+  const phaseElapsed = currentPhase
+    ? clamp(autoElapsed - currentPhase.startOffsetSeconds, 0, phaseBudget)
+    : 0;
+  const remainingSeconds = currentPhase
+    ? Math.max(0, currentPhase.endOffsetSeconds - autoElapsed)
+    : 0;
+  const extraSeconds = currentPhase
+    ? Math.max(0, autoElapsed - currentPhase.endOffsetSeconds)
+    : Math.max(0, autoElapsed - totalDurationSeconds);
+  const inBreakPhase = currentPhase?.type === "break";
+  const progressRatio = phaseBudget > 0 ? clamp(phaseElapsed / phaseBudget, 0, 1) : 1;
+  const canSkipCurrentPhaseEarly = Boolean(currentPhase && phaseBudget > 0 && remainingSeconds > 0);
+
+  return {
+    autoElapsed,
+    setSeconds: defaultSetSeconds,
+    defaultRestSeconds,
+    sequence,
+    phases,
+    phaseCount: phases.length,
+    currentPhase,
+    currentPhaseIndex: resolvedPhaseIndex,
+    nextPhase,
+    plannedWorkSeconds,
+    plannedRestSeconds,
+    totalDurationSeconds,
+    inBreakPhase,
+    remainingSeconds,
+    extraSeconds,
+    progressRatio,
+    canSkipCurrentPhaseEarly,
+    skipActionLabel: inBreakPhase ? "Skip break timer" : "Skip set timer",
+    currentPhaseTitle: currentPhase?.title || "No timer planned",
+    completed: Boolean(currentPhase && autoElapsed >= totalDurationSeconds)
+  };
 }
 
 function guidedExerciseSetTargetSeconds(draft = currentGuidedWorkoutDraft()) {
@@ -1457,17 +1645,11 @@ function guidedExerciseSetTargetSeconds(draft = currentGuidedWorkoutDraft()) {
 function guidedExerciseRestTargetSeconds(draft = currentGuidedWorkoutDraft()) {
   return normalizeSelectNumber(draft?.restTargetSecondsValue)
     ?? draft?.targetRestSeconds
-    ?? normalizeSelectNumber(draft?.restSecondsValue)
     ?? ui.routineTimer.restPresetSeconds;
 }
 
 function guidedExercisePlannedWorkSeconds(draft = currentGuidedWorkoutDraft()) {
-  const setSeconds = guidedExerciseSetTargetSeconds(draft);
-  if (setSeconds == null) {
-    return 0;
-  }
-
-  return exerciseWorkUnitCount(draft) * setSeconds;
+  return buildGuidedExercisePhaseSequence(draft).totalWorkSeconds;
 }
 
 function commitGuidedExerciseRest(index = ui.guidedWorkout.exerciseIndex) {
@@ -1483,10 +1665,10 @@ function commitGuidedExerciseRest(index = ui.guidedWorkout.exerciseIndex) {
   const elapsed = index === ui.guidedWorkout.exerciseIndex
     ? currentGuidedExerciseElapsedSeconds()
     : null;
-  const plannedWorkSeconds = guidedExercisePlannedWorkSeconds(draft);
+  const sequence = buildGuidedExercisePhaseSequence(draft);
   const targetSeconds = guidedExerciseRestTargetSeconds(draft);
   const loggedRestSeconds = elapsed != null
-    ? Math.max(0, elapsed - plannedWorkSeconds)
+    ? calculateElapsedPhaseTypeSeconds(sequence, elapsed, "break")
     : (normalizeSelectNumber(draft.restSecondsValue) ?? targetSeconds ?? 0);
 
   draft.restTargetSecondsValue = targetSeconds;
@@ -1516,6 +1698,7 @@ function dismissGuidedOverview() {
 
   ui.guidedWorkout.introVisible = false;
   ui.guidedWorkout.introDismissAt = null;
+  ui.guidedWorkout.frozenExerciseElapsedSeconds = null;
   if (!ui.guidedWorkout.enteredExerciseAt) {
     ui.guidedWorkout.enteredExerciseAt = Date.now();
   }
@@ -1523,12 +1706,46 @@ function dismissGuidedOverview() {
 }
 
 function skipGuidedBreakEarly() {
+  skipGuidedCurrentPhase();
+}
+
+function skipGuidedCurrentPhase() {
   if (!ui.guidedWorkout.active || ui.guidedWorkout.introVisible) {
     return;
   }
 
-  showToast("Shorter break tracked");
-  advanceGuidedWorkout();
+  const draft = currentGuidedWorkoutDraft();
+  if (!draft) {
+    return;
+  }
+
+  const phase = buildGuidedExercisePhaseState(draft);
+  if (!phase.canSkipCurrentPhaseEarly) {
+    return;
+  }
+
+  if (!phase.currentPhase) {
+    return;
+  }
+
+  const nextElapsedSeconds = phase.currentPhase.endOffsetSeconds;
+  if (phase.nextPhase) {
+    ui.guidedWorkout.frozenExerciseElapsedSeconds = null;
+    ui.guidedWorkout.enteredExerciseAt = Date.now() - (nextElapsedSeconds * 1000);
+  } else {
+    ui.guidedWorkout.frozenExerciseElapsedSeconds = phase.totalDurationSeconds;
+    ui.guidedWorkout.enteredExerciseAt = null;
+  }
+
+  if (phase.inBreakPhase) {
+    commitGuidedExerciseRest();
+    showToast("Break timer skipped");
+  } else {
+    showToast("Set timer skipped");
+  }
+
+  ui.guidedWorkout.paused = false;
+  renderGuidedWorkoutUI();
 }
 
 function inferExerciseEquipmentLabel(exercise = {}) {
@@ -1998,20 +2215,24 @@ function syncGuidedDraftToForm(index) {
     setTimeField.dataset.autoSetSeconds = String(inferSetSecondsFromTargetReps(draft.repsValue || draft.targetLogReps || draft.targetReps));
   }
   if (restField) {
-    restField.value = draft.restSecondsValue ?? "";
+    restField.value = draft.restTargetSecondsValue ?? "";
   }
   if (noteField) {
     noteField.value = draft.noteValue ?? "";
   }
   if (setList) {
-    setList.innerHTML = buildExerciseSetRowsMarkup(
-      draft.setLogs?.length ? draft.setLogs : buildExerciseSetDraftsFromTemplate(draft, {
-        defaultWeight: normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight
-      }),
-      draft.targetReps,
-      normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight
-    );
-  }
+      setList.innerHTML = buildExerciseSetRowsMarkup(
+        draft.setLogs?.length ? draft.setLogs : buildExerciseSetDraftsFromTemplate(draft, {
+          defaultWeight: normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight,
+          defaultSetSeconds: guidedExerciseSetTargetSeconds(draft),
+          defaultRestSeconds: guidedExerciseRestTargetSeconds(draft)
+        }),
+        draft.targetReps,
+        normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight,
+        guidedExerciseSetTargetSeconds(draft),
+        guidedExerciseRestTargetSeconds(draft)
+      );
+    }
 
   if (draft.noteValue) {
     setExercisePanelOpen(card, "notes", true);
@@ -2087,7 +2308,17 @@ function toggleGuidedWorkoutPause() {
     return;
   }
 
-  ui.guidedWorkout.paused = !ui.guidedWorkout.paused;
+  if (ui.guidedWorkout.paused) {
+    if (ui.guidedWorkout.frozenExerciseElapsedSeconds != null) {
+      ui.guidedWorkout.enteredExerciseAt = Date.now() - (ui.guidedWorkout.frozenExerciseElapsedSeconds * 1000);
+      ui.guidedWorkout.frozenExerciseElapsedSeconds = null;
+    }
+    ui.guidedWorkout.paused = false;
+  } else {
+    ui.guidedWorkout.frozenExerciseElapsedSeconds = currentGuidedExerciseElapsedSeconds();
+    ui.guidedWorkout.enteredExerciseAt = null;
+    ui.guidedWorkout.paused = true;
+  }
   renderGuidedWorkoutUI();
 }
 
@@ -2100,6 +2331,7 @@ function goToGuidedExercise(index) {
   const nextIndex = clamp(index, 0, ui.guidedWorkout.exerciseDrafts.length - 1);
   ui.guidedWorkout.exerciseIndex = nextIndex;
   ui.guidedWorkout.enteredExerciseAt = Date.now();
+  ui.guidedWorkout.frozenExerciseElapsedSeconds = null;
   ui.guidedWorkout.paused = false;
   refs.guidedWorkoutPanel.scrollTo({ top: 0, behavior: "smooth" });
   renderGuidedWorkoutUI();
@@ -2179,22 +2411,33 @@ function renderGuidedWorkoutUI() {
 
   const kind = sessionKinds[ui.guidedWorkout.templateKind] || sessionKinds.strength;
   const needsLiftFields = exerciseNeedsLiftFields(draft, ui.guidedWorkout.templateKind);
-  const autoElapsed = currentGuidedExerciseElapsedSeconds();
-  const setSeconds = guidedExerciseSetTargetSeconds(draft);
-  const plannedWorkSeconds = guidedExercisePlannedWorkSeconds(draft);
-  const targetSeconds = guidedExerciseRestTargetSeconds(draft);
-  const breakElapsed = Math.max(0, autoElapsed - plannedWorkSeconds);
-  const inBreakPhase = autoElapsed >= plannedWorkSeconds;
-  const remainingSeconds = inBreakPhase
-    ? Math.max(0, targetSeconds - breakElapsed)
-    : Math.max(0, plannedWorkSeconds - autoElapsed);
-  const extraSeconds = inBreakPhase
-    ? Math.max(0, breakElapsed - targetSeconds)
-    : 0;
-  const phaseBudget = inBreakPhase ? Math.max(targetSeconds, 1) : Math.max(plannedWorkSeconds, 1);
-  const phaseElapsed = inBreakPhase ? Math.min(breakElapsed, phaseBudget) : autoElapsed;
-  const progressRatio = phaseBudget > 0 ? clamp(phaseElapsed / phaseBudget, 0, 1) : 1;
-  const canSkipBreakEarly = !showIntro && inBreakPhase && targetSeconds > 0 && breakElapsed < targetSeconds;
+  const phase = buildGuidedExercisePhaseState(draft);
+  const {
+    defaultRestSeconds,
+    currentPhase,
+    currentPhaseIndex,
+    phaseCount,
+    plannedWorkSeconds,
+    plannedRestSeconds,
+    inBreakPhase,
+    remainingSeconds,
+    extraSeconds,
+    progressRatio,
+    canSkipCurrentPhaseEarly,
+    skipActionLabel,
+    currentPhaseTitle
+  } = phase;
+  const phaseBudgetSeconds = currentPhase?.durationSeconds || 0;
+  const phaseCounterLabel = currentPhaseIndex >= 0 ? `${currentPhaseIndex + 1}/${phaseCount}` : "";
+  const phaseStatusText = currentPhase
+    ? (ui.guidedWorkout.paused
+      ? `Paused • ${currentPhaseTitle}`
+      : extraSeconds
+        ? `${currentPhaseTitle} finished • +${formatTimerClock(extraSeconds, { showHours: false })} extra`
+        : remainingSeconds > 0
+          ? `${currentPhaseTitle} • ${formatTimerClock(remainingSeconds, { showHours: false })} left`
+          : `${currentPhaseTitle} complete • move on when ready`)
+    : "Add set and break times to guide this exercise.";
   const displayEffort = normalizeSelectNumber(draft.effortPercentValue) ?? draft.targetEffortPercent;
   const displayReps = normalizeSelectNumber(draft.repsValue) ?? draft.targetLogReps;
   const displayWeight = normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight;
@@ -2216,12 +2459,14 @@ function renderGuidedWorkoutUI() {
   refs.guidedExerciseProgress.textContent = `Exercise ${ui.guidedWorkout.exerciseIndex + 1} of ${ui.guidedWorkout.exerciseDrafts.length}`;
   refs.guidedSessionTimer.textContent = formatTimerClock(currentWorkoutElapsedSeconds(), { showHours: true });
   refs.guidedSessionEffort.textContent = displayEffort != null ? `${displayEffort}%` : "--%";
-  refs.guidedStageMeterLabel.textContent = inBreakPhase ? "Break timer" : "Set timer";
+  refs.guidedStageMeterLabel.textContent = currentPhase
+    ? `${inBreakPhase ? "Break" : "Set"} ${phaseCounterLabel}`
+    : "Timer";
   refs.guidedExerciseTimer.textContent = extraSeconds
     ? `+${formatTimerClock(extraSeconds, { showHours: false })}`
-    : formatTimerClock(remainingSeconds, { showHours: (inBreakPhase ? targetSeconds : plannedWorkSeconds) >= 3600 });
+    : formatTimerClock(remainingSeconds, { showHours: phaseBudgetSeconds >= 3600 });
   refs.guidedExerciseName.textContent = draft.name || "Exercise";
-  refs.guidedExerciseTarget.textContent = `${draft.targetSets} sets • ${draft.targetReps || "-"}`;
+  refs.guidedExerciseTarget.textContent = `${draft.targetSets} sets • ${draft.targetReps || "-"} • ${formatDurationCompact(plannedWorkSeconds)} work / ${formatDurationCompact(plannedRestSeconds)} break`;
   refs.guidedExerciseKind.textContent = kind.label;
   refs.guidedExerciseKind.style.background = kind.color;
   refs.guidedHeroReps.textContent = displayReps != null ? `${displayReps}` : "--";
@@ -2230,28 +2475,18 @@ function renderGuidedWorkoutUI() {
   refs.guidedExerciseEquipment.textContent = equipmentLabel;
   refs.guidedStageMeterRing.style.setProperty("--guided-meter-progress", `${progressRatio}`);
   refs.guidedStageMeterRing.classList.toggle("is-overrun", extraSeconds > 0);
-  refs.guidedExerciseStatus.textContent = ui.guidedWorkout.paused
-    ? (inBreakPhase
-      ? (extraSeconds
-        ? `Paused • +${formatTimerClock(extraSeconds, { showHours: false })} extra break tracked`
-        : `Paused • break still tracking after ${formatDurationCompact(plannedWorkSeconds)} of set work`)
-      : `Paused • ${formatTimerClock(Math.max(0, plannedWorkSeconds - autoElapsed), { showHours: false })} of set work left`)
-    : extraSeconds
-      ? `Set work ${formatDurationCompact(plannedWorkSeconds)} done • +${formatTimerClock(extraSeconds, { showHours: false })} extra break`
-      : inBreakPhase
-        ? `Break ${formatTimerClock(remainingSeconds, { showHours: false })} left • set budget ${formatDurationCompact(plannedWorkSeconds)}`
-        : `Set budget ${formatDurationCompact(setSeconds)} x ${exerciseWorkUnitCount(draft)} • break ${formatDurationCompact(targetSeconds)} after`;
+  refs.guidedExerciseStatus.textContent = phaseStatusText;
   refs.guidedExerciseTemplateNote.textContent = draft.templateNote || "";
   refs.guidedExerciseTemplateNote.classList.toggle("hidden", !draft.templateNote);
   refs.guidedWorkoutPause.textContent = ui.guidedWorkout.paused ? "Resume" : "Pause";
   refs.guidedPrevExercise.disabled = ui.guidedWorkout.exerciseIndex === 0;
-  refs.guidedSkipBreak.classList.toggle("hidden", !canSkipBreakEarly);
-  refs.guidedSkipBreak.textContent = ui.guidedWorkout.exerciseIndex === ui.guidedWorkout.exerciseDrafts.length - 1
-    ? "Skip break & finish"
-    : "Skip break";
+  refs.guidedSkipBreak.classList.toggle("hidden", !canSkipCurrentPhaseEarly || showIntro);
+  refs.guidedSkipBreak.textContent = skipActionLabel;
+  refs.guidedSkipPhase.classList.toggle("hidden", !canSkipCurrentPhaseEarly || showIntro);
+  refs.guidedSkipPhase.textContent = skipActionLabel;
   refs.guidedNextExercise.textContent = ui.guidedWorkout.exerciseIndex === ui.guidedWorkout.exerciseDrafts.length - 1
-    ? (canSkipBreakEarly ? "Skip break & finish" : "Finish workout")
-    : (canSkipBreakEarly ? "Skip break & next" : "Next exercise");
+    ? "Finish workout"
+    : "Next exercise";
 
   if (shouldRefreshContent) {
     refs.guidedWorkoutFields.innerHTML = buildExerciseRollerFieldsMarkup({
@@ -2264,7 +2499,7 @@ function renderGuidedWorkoutUI() {
       effortPercent: draft.effortPercentValue ?? "",
       weightValue: draft.weightValue ?? "",
       setSeconds: draft.setSecondsValue ?? guidedExerciseSetTargetSeconds(draft),
-      restSeconds: normalizeSelectNumber(draft.restSecondsValue) ?? guidedExerciseRestTargetSeconds(draft),
+      restSeconds: draft.restTargetSecondsValue ?? defaultRestSeconds,
       lastWeight: normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight ?? getLastWeight(draft.name)
     });
 
@@ -2272,10 +2507,14 @@ function renderGuidedWorkoutUI() {
     refs.guidedNoteInput.value = draft.noteValue ?? "";
     refs.guidedSetList.innerHTML = buildExerciseSetRowsMarkup(
       draft.setLogs?.length ? draft.setLogs : buildExerciseSetDraftsFromTemplate(draft, {
-        defaultWeight: normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight
+        defaultWeight: normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight,
+        defaultSetSeconds: guidedExerciseSetTargetSeconds(draft),
+        defaultRestSeconds: guidedExerciseRestTargetSeconds(draft)
       }),
       draft.targetReps,
-      normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight
+      normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight,
+      guidedExerciseSetTargetSeconds(draft),
+      guidedExerciseRestTargetSeconds(draft)
     );
     ui.guidedWorkout.renderedExerciseIndex = ui.guidedWorkout.exerciseIndex;
   }
@@ -2302,7 +2541,9 @@ function handleGuidedWorkoutClick(event) {
   if (addFollowupButton) {
     const row = addFollowupButton.closest("[data-set-row]");
     appendExerciseFollowupRow(row, {
-      defaultWeight: normalizeSelectNumber(currentGuidedWorkoutDraft()?.weightValue) ?? currentGuidedWorkoutDraft()?.targetWeight
+      defaultWeight: normalizeSelectNumber(currentGuidedWorkoutDraft()?.weightValue) ?? currentGuidedWorkoutDraft()?.targetWeight,
+      defaultSetSeconds: guidedExerciseSetTargetSeconds(currentGuidedWorkoutDraft()),
+      defaultRestSeconds: guidedExerciseRestTargetSeconds(currentGuidedWorkoutDraft())
     });
     syncGuidedSetLogsFromPanel();
     return;
@@ -2313,7 +2554,9 @@ function handleGuidedWorkoutClick(event) {
     if (!refs.guidedSetList.children.length) {
       appendExerciseSetRow(refs.guidedSetList, {
         targetReps: currentGuidedWorkoutDraft()?.targetReps || "",
-        defaultWeight: normalizeSelectNumber(currentGuidedWorkoutDraft()?.weightValue) ?? currentGuidedWorkoutDraft()?.targetWeight
+        defaultWeight: normalizeSelectNumber(currentGuidedWorkoutDraft()?.weightValue) ?? currentGuidedWorkoutDraft()?.targetWeight,
+        defaultSetSeconds: guidedExerciseSetTargetSeconds(currentGuidedWorkoutDraft()),
+        defaultRestSeconds: guidedExerciseRestTargetSeconds(currentGuidedWorkoutDraft())
       });
     }
     renumberExerciseSetRows(refs.guidedSetList);
@@ -2326,6 +2569,9 @@ function handleGuidedWorkoutChange(event) {
   if (!draft) {
     return;
   }
+
+  const previousSetSeconds = guidedExerciseSetTargetSeconds(draft);
+  const previousRestSeconds = guidedExerciseRestTargetSeconds(draft);
 
   if (event.target.matches("[data-reps-picker]")) {
     const previousAutoSetSeconds = inferSetSecondsFromExercise({
@@ -2342,6 +2588,11 @@ function handleGuidedWorkoutChange(event) {
     const currentSetSeconds = normalizeSelectNumber(draft.setSecondsValue);
     if (currentSetSeconds == null || (previousAutoSetSeconds != null && Math.abs(currentSetSeconds - previousAutoSetSeconds) < 0.001)) {
       draft.setSecondsValue = nextAutoSetSeconds != null ? String(nextAutoSetSeconds) : "";
+      syncSetTimingInputs(refs.guidedSetList, {
+        nextSetSeconds: draft.setSecondsValue,
+        nextRestSeconds: previousRestSeconds
+      });
+      syncGuidedSetLogsFromPanel();
     }
   }
   if (event.target.matches("[data-effort-percent]")) {
@@ -2361,15 +2612,30 @@ function handleGuidedWorkoutChange(event) {
   }
   if (event.target.matches("[data-set-seconds]")) {
     draft.setSecondsValue = event.target.value;
+    syncSetTimingInputs(refs.guidedSetList, {
+      nextSetSeconds: draft.setSecondsValue,
+      nextRestSeconds: previousRestSeconds
+    });
+    syncGuidedSetLogsFromPanel();
+    ui.guidedWorkout.frozenExerciseElapsedSeconds = null;
     ui.guidedWorkout.enteredExerciseAt = Date.now();
   }
   if (event.target.matches("[data-rest-seconds]")) {
     draft.restTargetSecondsValue = event.target.value;
-    draft.restSecondsValue = event.target.value;
+    syncSetTimingInputs(refs.guidedSetList, {
+      nextSetSeconds: previousSetSeconds,
+      nextRestSeconds: draft.restTargetSecondsValue
+    });
+    syncGuidedSetLogsFromPanel();
+    ui.guidedWorkout.frozenExerciseElapsedSeconds = null;
     ui.guidedWorkout.enteredExerciseAt = Date.now();
   }
-  if (event.target.matches("[data-set-weight], [data-set-reps]")) {
+  if (event.target.matches("[data-set-weight], [data-set-reps], [data-set-log-seconds], [data-set-log-rest-seconds]")) {
     syncGuidedSetLogsFromPanel();
+    if (event.target.matches("[data-set-log-seconds], [data-set-log-rest-seconds]")) {
+      ui.guidedWorkout.frozenExerciseElapsedSeconds = null;
+      ui.guidedWorkout.enteredExerciseAt = Date.now();
+    }
   }
 
   syncGuidedDraftToForm(ui.guidedWorkout.exerciseIndex);
@@ -2387,7 +2653,7 @@ function handleGuidedWorkoutInput(event) {
     syncGuidedDraftToForm(ui.guidedWorkout.exerciseIndex);
   }
 
-  if (event.target.matches("[data-set-weight], [data-set-reps]")) {
+  if (event.target.matches("[data-set-weight], [data-set-reps], [data-set-log-seconds], [data-set-log-rest-seconds]")) {
     syncGuidedSetLogsFromPanel();
   }
 }
@@ -2410,7 +2676,9 @@ function appendGuidedSetRow() {
 
   appendExerciseSetRow(refs.guidedSetList, {
     targetReps: draft.targetReps || "",
-    defaultWeight: normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight
+    defaultWeight: normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight,
+    defaultSetSeconds: guidedExerciseSetTargetSeconds(draft),
+    defaultRestSeconds: guidedExerciseRestTargetSeconds(draft)
   });
   syncGuidedSetLogsFromPanel();
 }
@@ -2421,14 +2689,19 @@ function handleRoutineExerciseFieldChange(event) {
     return;
   }
 
+  const setList = card.querySelector("[data-set-list]");
+
   if (event.target.matches("[data-reps-picker]")) {
     syncExerciseCardSetTime(card);
+    syncSetTimingInputs(setList, {
+      nextSetSeconds: currentExerciseCardSetSeconds(card),
+      nextRestSeconds: currentExerciseCardRestSeconds(card)
+    });
   }
 
   if (event.target.matches("[data-lift-weight]")) {
     const previousWeight = card.dataset.defaultSetWeight || "";
     const nextWeight = event.target.value;
-    const setList = card.querySelector("[data-set-list]");
 
     syncSetWeightInputs(setList, {
       nextWeight,
@@ -2437,7 +2710,14 @@ function handleRoutineExerciseFieldChange(event) {
     card.dataset.defaultSetWeight = normalizedWeightValue(nextWeight);
   }
 
-  if (event.target.matches("[data-set-seconds], [data-rest-seconds], [data-reps-picker]")) {
+  if (event.target.matches("[data-set-seconds], [data-rest-seconds]")) {
+    syncSetTimingInputs(setList, {
+      nextSetSeconds: currentExerciseCardSetSeconds(card),
+      nextRestSeconds: currentExerciseCardRestSeconds(card)
+    });
+  }
+
+  if (event.target.matches("[data-set-seconds], [data-rest-seconds], [data-reps-picker], [data-set-log-seconds], [data-set-log-rest-seconds]")) {
     renderRoutineTimerUI();
   }
 }
@@ -2745,7 +3025,9 @@ function populateRoutineExerciseFieldsFromLogs(exerciseLogs = []) {
       setList.innerHTML = buildExerciseSetRowsMarkup(
         getExerciseSetLogs(entry, { fallbackReps: card.dataset.targetReps || "" }),
         card.dataset.targetReps || "",
-        summary.keyWeight ?? entry.keyWeight ?? null
+        summary.keyWeight ?? entry.keyWeight ?? null,
+        entry.setSeconds ?? "",
+        entry.restSeconds ?? ""
       );
     }
     if (entry.note) {
@@ -2755,6 +3037,50 @@ function populateRoutineExerciseFieldsFromLogs(exerciseLogs = []) {
       setExercisePanelOpen(card, "details", true);
     }
   });
+}
+
+function appendRoutineLogExerciseCard(exercise, sessionKind) {
+  if (!refs.routineExerciseFields.querySelector("[data-exercise-name]")) {
+    refs.routineExerciseFields.innerHTML = "";
+  }
+
+  refs.routineExerciseFields.insertAdjacentHTML("beforeend", buildRoutineLogExerciseCardMarkup(exercise, sessionKind));
+  return refs.routineExerciseFields.lastElementChild;
+}
+
+function addExerciseToCurrentSession({ jumpToGuidedExercise = false } = {}) {
+  const template = ensureEditableRoutineLogTemplate();
+  if (!template) {
+    showToast("Choose a routine or a planned session first");
+    return;
+  }
+
+  const name = promptForSessionExerciseName();
+  if (!name) {
+    return;
+  }
+
+  const exercise = buildAdHocExerciseTemplate(name, template.kind);
+  template.exercises.push(exercise);
+
+  const card = appendRoutineLogExerciseCard(exercise, template.kind);
+  setExercisePanelOpen(card, "details", true);
+  renderRoutineTimerUI();
+
+  if (ui.guidedWorkout.active) {
+    ui.guidedWorkout.exerciseDrafts.push(buildGuidedWorkoutDraft(exercise, card, template.kind));
+    ui.guidedWorkout.renderedExerciseIndex = -1;
+
+    if (jumpToGuidedExercise) {
+      goToGuidedExercise(ui.guidedWorkout.exerciseDrafts.length - 1);
+    } else {
+      renderGuidedWorkoutUI();
+    }
+  }
+
+  card?.scrollIntoView({ behavior: "smooth", block: "start" });
+  card?.querySelector("[data-reps-picker], [data-set-weight], [data-set-reps]")?.focus();
+  showToast(`${exercise.name} added to this workout`);
 }
 
 function updateRoutineBuilderUI() {
@@ -2920,6 +3246,88 @@ function refreshRoutineLogOptions() {
   syncRoutineLogForm({ fromSelection: true });
 }
 
+function buildRoutineLogExerciseCardMarkup(exercise, sessionKind) {
+  const history = getExerciseHistory(exercise.name, { limit: 4 });
+  const latestEntry = history[0];
+  const latestSummary = latestEntry ? summarizeExerciseLog(latestEntry) : null;
+  const lastWeight = latestSummary?.keyWeight ?? getLastWeight(exercise.name);
+  const suggestedWeight = getSuggestedExerciseWeight(exercise, sessionKind, { latestEntry });
+  const lastSetSeconds = getLastSetSeconds(exercise.name);
+  const lastRestSeconds = getLastRestSeconds(exercise.name);
+  const lastEffortPercent = latestEntry ? getExerciseEffortPercent(latestEntry) : null;
+  const historyMarkup = history.length
+    ? `
+      <div class="exercise-history">
+        <div class="exercise-history-title">Recent weeks</div>
+        ${history.map((entry) => `
+          <div class="exercise-history-row">
+            <div class="exercise-history-main">${escapeHtml(formatExerciseHistoryLine(entry))}</div>
+            ${entry.note ? `<div class="exercise-history-note">${escapeHtml(entry.note)}</div>` : ""}
+          </div>
+        `).join("")}
+      </div>
+    `
+    : `<div class="helper-text">No previous exercise log yet</div>`;
+
+  return `
+    <article class="exercise-card" data-exercise-name="${escapeHtml(exercise.name)}" data-target-reps="${escapeAttribute(exercise.targetReps)}" data-default-set-weight="${escapeAttribute(normalizedWeightValue(suggestedWeight))}">
+      <div class="exercise-head">
+        <div>
+          <div class="list-title">${escapeHtml(exercise.name)}</div>
+          <div class="exercise-target">${exercise.targetSets} sets • ${escapeHtml(exercise.targetReps)}</div>
+          ${exercise.notes ? `<div class="helper-text" style="margin-top:0.35rem">${escapeHtml(exercise.notes)}</div>` : ""}
+          ${buildExerciseHistoryHintMarkup({ suggestedWeight, lastWeight, lastSetSeconds, lastRestSeconds, lastEffortPercent })}
+        </div>
+        <span class="small-tag" style="background:${sessionKinds[sessionKind].color}">
+          ${sessionKinds[sessionKind].label}
+        </span>
+      </div>
+
+      ${buildExerciseRollerFieldsMarkup({
+        exercise,
+        sessionKind,
+        repsValue: exercise.targetLogReps ?? extractPreferredRepValue(exercise),
+        effortPercent: exercise.targetEffortPercent ?? "",
+        weightValue: suggestedWeight ?? exercise.targetWeight ?? "",
+        setSeconds: exercise.targetSetSeconds ?? inferSetSecondsFromExercise(exercise),
+        restSeconds: exercise.targetRestSeconds ?? "",
+        lastWeight: suggestedWeight ?? exercise.targetWeight ?? lastWeight
+      })}
+
+      <div class="exercise-tools">
+        <button class="exercise-tool" type="button" data-toggle-exercise-panel="history">History</button>
+        <button class="exercise-tool" type="button" data-toggle-exercise-panel="notes">Notes</button>
+        <button class="exercise-tool" type="button" data-toggle-exercise-panel="details">Set details</button>
+      </div>
+
+      <div class="exercise-panel hidden" data-exercise-panel="history">
+        ${historyMarkup}
+      </div>
+
+      <label class="field exercise-panel hidden" data-exercise-panel="notes">
+        <span>Exercise note</span>
+        <textarea rows="2" data-note placeholder="Technique, pain, machine used, strong, ugly..."></textarea>
+      </label>
+
+      <div class="exercise-panel hidden" data-exercise-panel="details">
+        <div class="exercise-set-list" data-set-list>
+          ${buildExerciseSetRowsMarkup(
+          buildExerciseSetDraftsFromTemplate(exercise, { defaultWeight: suggestedWeight }),
+          exercise.targetReps,
+          suggestedWeight,
+          exercise.targetSetSeconds ?? inferSetSecondsFromExercise(exercise),
+          exercise.targetRestSeconds ?? ""
+        )}
+        </div>
+
+        <div class="mini-actions">
+          <button class="button button-secondary compact" type="button" data-add-set>Add extra set</button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
 function syncRoutineLogForm({ fromSelection = false } = {}) {
   const template = currentRoutineLogTemplate();
 
@@ -2948,84 +3356,7 @@ function syncRoutineLogForm({ fromSelection = false } = {}) {
 
   refs.routineLogNote.textContent = template.notes || sessionKinds[template.kind]?.description || "";
   refs.routineExerciseFields.innerHTML = template.exercises.length
-    ? template.exercises.map((exercise) => {
-        const history = getExerciseHistory(exercise.name, { limit: 4 });
-        const latestEntry = history[0];
-        const latestSummary = latestEntry ? summarizeExerciseLog(latestEntry) : null;
-        const lastWeight = latestSummary?.keyWeight ?? getLastWeight(exercise.name);
-        const suggestedWeight = getSuggestedExerciseWeight(exercise, template.kind, { latestEntry });
-        const lastSetSeconds = getLastSetSeconds(exercise.name);
-        const lastRestSeconds = getLastRestSeconds(exercise.name);
-        const lastEffortPercent = latestEntry ? getExerciseEffortPercent(latestEntry) : null;
-        const historyMarkup = history.length
-          ? `
-            <div class="exercise-history">
-              <div class="exercise-history-title">Recent weeks</div>
-              ${history.map((entry) => `
-                <div class="exercise-history-row">
-                  <div class="exercise-history-main">${escapeHtml(formatExerciseHistoryLine(entry))}</div>
-                  ${entry.note ? `<div class="exercise-history-note">${escapeHtml(entry.note)}</div>` : ""}
-                </div>
-              `).join("")}
-            </div>
-          `
-          : `<div class="helper-text">No previous exercise log yet</div>`;
-        return `
-          <article class="exercise-card" data-exercise-name="${escapeHtml(exercise.name)}" data-target-reps="${escapeAttribute(exercise.targetReps)}" data-default-set-weight="${escapeAttribute(normalizedWeightValue(suggestedWeight))}">
-            <div class="exercise-head">
-              <div>
-                <div class="list-title">${escapeHtml(exercise.name)}</div>
-                <div class="exercise-target">${exercise.targetSets} sets • ${escapeHtml(exercise.targetReps)}</div>
-                ${exercise.notes ? `<div class="helper-text" style="margin-top:0.35rem">${escapeHtml(exercise.notes)}</div>` : ""}
-                ${buildExerciseHistoryHintMarkup({ suggestedWeight, lastWeight, lastSetSeconds, lastRestSeconds, lastEffortPercent })}
-              </div>
-              <span class="small-tag" style="background:${sessionKinds[template.kind].color}">
-                ${sessionKinds[template.kind].label}
-              </span>
-            </div>
-
-            ${buildExerciseRollerFieldsMarkup({
-              exercise,
-              sessionKind: template.kind,
-              repsValue: exercise.targetLogReps ?? extractPreferredRepValue(exercise),
-              effortPercent: exercise.targetEffortPercent ?? "",
-              weightValue: suggestedWeight ?? exercise.targetWeight ?? "",
-              setSeconds: exercise.targetSetSeconds ?? inferSetSecondsFromExercise(exercise),
-              restSeconds: exercise.targetRestSeconds ?? "",
-              lastWeight: suggestedWeight ?? exercise.targetWeight ?? lastWeight
-            })}
-
-            <div class="exercise-tools">
-              <button class="exercise-tool" type="button" data-toggle-exercise-panel="history">History</button>
-              <button class="exercise-tool" type="button" data-toggle-exercise-panel="notes">Notes</button>
-              <button class="exercise-tool" type="button" data-toggle-exercise-panel="details">Set details</button>
-            </div>
-
-            <div class="exercise-panel hidden" data-exercise-panel="history">
-              ${historyMarkup}
-            </div>
-
-            <label class="field exercise-panel hidden" data-exercise-panel="notes">
-              <span>Exercise note</span>
-              <textarea rows="2" data-note placeholder="Technique, pain, machine used, strong, ugly..."></textarea>
-            </label>
-
-              <div class="exercise-panel hidden" data-exercise-panel="details">
-                <div class="exercise-set-list" data-set-list>
-                  ${buildExerciseSetRowsMarkup(
-                  buildExerciseSetDraftsFromTemplate(exercise, { defaultWeight: suggestedWeight }),
-                  exercise.targetReps,
-                  suggestedWeight
-                )}
-                </div>
-
-                <div class="mini-actions">
-                <button class="button button-secondary compact" type="button" data-add-set>Add extra set</button>
-                </div>
-              </div>
-          </article>
-        `;
-      }).join("")
+    ? template.exercises.map((exercise) => buildRoutineLogExerciseCardMarkup(exercise, template.kind)).join("")
     : buildEmptyCard("This routine is mostly time based", "Use the notes field and loaded areas, then save the session.");
 
   renderRoutineTimerUI();
@@ -3076,8 +3407,11 @@ async function handlePhotoImportSelection(event) {
     ui.photoImport.processing = false;
     updatePhotoImportDraftFromText();
   } catch (error) {
+    const heicLike = isHeicLikeFile(file);
     ui.photoImport.processing = false;
-    ui.photoImport.status = "The photo could not be read. Try a sharper image with darker pen strokes and good light.";
+    ui.photoImport.status = heicLike
+      ? "This browser could not open the HEIC photo. Export or share it as JPEG or PNG, then try the scan again."
+      : "The photo could not be read. Try a sharper image with darker pen strokes and good light.";
     ui.photoImport.statusTone = "error";
     ui.photoImport.draft = null;
     renderPhotoImportUI();
@@ -3306,6 +3640,15 @@ function loadImageFromFile(file) {
     };
     image.src = objectUrl;
   });
+}
+
+function isHeicLikeFile(file) {
+  const type = String(file?.type || "").toLowerCase();
+  const name = String(file?.name || "").toLowerCase();
+  return type === "image/heic"
+    || type === "image/heif"
+    || name.endsWith(".heic")
+    || name.endsWith(".heif");
 }
 
 function parseImportedWorkoutText(text) {
@@ -3672,9 +4015,8 @@ function looksLikeWorkoutHeader(line) {
     return true;
   }
 
-  return !/\d/.test(normalized)
-    && /\b(?:upper|lower|leg day|pull day|push day|full body|session|workout|pwr|dd)\b/i.test(normalized)
-    && normalized.split(/\s+/).length <= 4;
+  return /^(?:nxt\s+)?(?:upper|lower|legs|leg day|pull(?!\s*(?:ups?|downs?)\b)(?:\s+day)?|push(?!\s*(?:ups?|backs?)\b)(?:\s+day)?|full body|cali|session|workout|pwr|dd)\b/i.test(normalized)
+    && normalized.split(/\s+/).length <= 6;
 }
 
 function looksLikeExerciseLabel(line) {
@@ -3689,7 +4031,7 @@ function looksLikeExerciseLabel(line) {
     return false;
   }
 
-  return /\b(?:squat|lunges?|press|row|curl|bench|thrust|extension|raises?|raise|dips?|pull|lat|ham|leg|hip|calf|shoulder|rdl|bgss|db|pb)\b/i.test(normalized);
+  return /\b(?:squat|lunges?|press|row|curl|bench|thrust|trust|extension|raises?|raise|dips?|pull|lat|ham|leg|hip|calf|shoulder|rdl|bgss|bss|db|pb|hang|flag|handstand|goblet|hack|step[\s-]*up|kickback|bootie|back\s*ex)\b/i.test(normalized);
 }
 
 function looksLikeExerciseData(line) {
@@ -3698,12 +4040,12 @@ function looksLikeExerciseData(line) {
     return false;
   }
 
-  return /(?:kg|bw|fail|reps?|sets?|range|motion|x|->|→|\/|\+)/i.test(normalized);
+  return /(?:kg|bw|fail|reps?|sets?|range|motion|x|->|→|\/|\+|\bp\b|plates?)/i.test(normalized);
 }
 
 function splitImportedExerciseNames(namePart) {
   const normalized = String(namePart || "").replace(/\s+/g, " ").trim();
-  const parts = normalized.split(/\s+[x×]\s+/).map((part) => part.trim()).filter(Boolean);
+  const parts = normalized.split(/\s+(?:x|×|\+|\/|into|->|→|and)\s+/).map((part) => part.trim()).filter(Boolean);
 
   if (parts.length > 1 && parts.every((part) => looksLikeExerciseLabel(part))) {
     return parts;
@@ -3835,6 +4177,17 @@ function parseImportedSegmentSetLogs(segment) {
     }
   }
 
+  const platesRepsSets = cleaned.match(/\b([+-]?\d+(?:[.,]\d+)?)\s*p\s*x\s*(\d{1,2})\s*x\s*(\d{1,2})\b/i);
+  if (platesRepsSets) {
+    const reps = Number(platesRepsSets[2]);
+    const setCount = Number(platesRepsSets[3]);
+
+    return Array.from({ length: setCount }, () => ({
+      weight: null,
+      reps
+    }));
+  }
+
   const fixedWeightRepList = cleaned.match(/\b([+-]?\d+(?:[.,]\d+)?)\s*(kg|kgs|lb|lbs)?\s*x\s*(\d{1,2}(?:\s*[/,]\s*\d{1,2})+)\b/i);
   if (fixedWeightRepList) {
     const weight = parseImportedNumber(fixedWeightRepList[1]);
@@ -3847,11 +4200,28 @@ function parseImportedSegmentSetLogs(segment) {
     }
   }
 
+  const platesRepList = cleaned.match(/\b([+-]?\d+(?:[.,]\d+)?)\s*p\s*x\s*(\d{1,2}(?:\s*[/,]\s*\d{1,2})+)\b/i);
+  if (platesRepList) {
+    return platesRepList[2]
+      .split(/[/,]/)
+      .map((value) => Number(value.trim()))
+      .filter((value) => Number.isFinite(value) && value > 0)
+      .map((reps) => ({ weight: null, reps }));
+  }
+
   const repsByWeight = cleaned.match(/\b(\d{1,2})\s*x\s*([+-]?\d+(?:[.,]\d+)?)\s*(kg|kgs|lb|lbs)\b/i);
   if (repsByWeight) {
     return [{
       weight: parseImportedNumber(repsByWeight[2]),
       reps: Number(repsByWeight[1])
+    }];
+  }
+
+  const repsByPlates = cleaned.match(/\b(\d{1,2})\s*x\s*([+-]?\d+(?:[.,]\d+)?)\s*p\b/i);
+  if (repsByPlates) {
+    return [{
+      weight: null,
+      reps: Number(repsByPlates[1])
     }];
   }
 
@@ -4121,6 +4491,7 @@ function handleRoutineLogSubmit(event) {
   const hasMeasuredWorkoutTime = ui.routineTimer.hasMeasuredWorkoutTime || measuredElapsedSeconds > 0;
   const shouldPersistTemplate = template.sourceType === "planned"
     || (template.sourceType === "photo")
+    || Boolean(ui.activeRoutineLogTemplate?.exercises?.length)
     || (!template.routineId && template.exercises.length);
   const workout = {
     id: editingId || uid(),
@@ -4359,6 +4730,7 @@ function renderToday() {
           <button class="button button-secondary compact" type="button" data-today-advance>Advance</button>
         </div>
         <div class="helper-text" style="margin-top:0.75rem">${escapeHtml(activeWeekLabel(activeBlock))}</div>
+        <div class="helper-text" style="margin-top:0.45rem">Tap any session to start it now, even if you move it away from its planned day.</div>
         <div class="stack-list" style="margin-top:0.8rem">
           ${currentBlockWeek(activeBlock).plannedSessions.map((session) => renderPlannedSessionCard(session)).join("")}
         </div>
@@ -4444,6 +4816,8 @@ function renderPlannerPanels() {
   const installedBlock = getSurfFirstBlock();
   const planner = plannerSettings();
   const googleCalendar = planner.googleCalendar;
+  const profile = buildTrainingHistoryProfile();
+  const strategy = buildSurfFirstPlanStrategy(profile);
   const needsHostedOrigin = location.protocol === "file:";
   const linkedCalendarLabel = googleCalendar.calendarId
     ? `${googleCalendar.calendarName || "PulseBoard Surf-First Base"} linked`
@@ -4452,7 +4826,7 @@ function renderPlannerPanels() {
     ? formatDate(googleCalendar.lastSyncedAt, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
     : "Not synced yet";
 
-  refs.surfPlanSummary.innerHTML = buildSurfFirstPlanSummaryMarkup(installedBlock);
+  refs.surfPlanSummary.innerHTML = buildSurfFirstPlanSummaryMarkup(installedBlock, profile, strategy);
   refs.installSurfPlan.textContent = installedBlock ? "Refresh surf-first base plan" : "Install surf-first base plan";
   renderInlinePanelStatus(refs.surfPlanStatus, ui.surfPlanStatus.message, ui.surfPlanStatus.tone);
 
@@ -4475,31 +4849,46 @@ function renderPlannerPanels() {
   renderInlinePanelStatus(refs.googleCalendarStatus, calendarStatus, calendarTone);
 }
 
-function buildSurfFirstPlanSummaryMarkup(installedBlock) {
+function buildSurfFirstPlanSummaryMarkup(installedBlock, profile = buildTrainingHistoryProfile(), strategy = buildSurfFirstPlanStrategy(profile)) {
   const metrics = [
     {
-      label: "Primary pillar",
-      value: "Surf 5-7x / week",
-      detail: "Daily surf windows stay first priority. Land work should support the water, not compete with it."
+      label: "History read",
+      value: profile.sampleWorkouts
+        ? `${profile.sampleWorkouts} workouts / ${profile.weekCount} weeks`
+        : "Starter profile",
+      detail: profile.sampleWorkouts
+        ? "The base now reads your logged patterns instead of assuming one generic split fits everything."
+        : "Log more training and the plan will swap more of the defaults for your real anchors."
     },
     {
-      label: "Strength dose",
-      value: "1 lower + 2 upper",
-      detail: "Enough to hold squat control, pulling strength, dips, and skill progress without draining energy."
+      label: "Observed strength",
+      value: `${formatNumber(profile.observedLowerPerWeek)} lower / ${formatNumber(profile.observedUpperPerWeek)} upper`,
+      detail: "Average weekly strength touches from the history sample. This is the pattern the planner now tries to respect."
     },
     {
-      label: "Engine hold",
-      value: "1 quality run",
-      detail: "Keep the 5k and marathon feel alive with one sharp run plus optional swim fallback for paddling and aerobic touch."
+      label: "Planned dose",
+      value: `${strategy.lowerSessions} lower + ${strategy.upperSessions} upper`,
+      detail: strategy.useLowerSupportReset
+        ? "The second lower touch stays short so strength holds without turning the week into a heavy two-leg-day grind."
+        : "One lower anchor stays in place when the current history does not clearly justify a second touch yet."
     },
     {
-      label: "Life protection",
-      value: "Buffers built in",
-      detail: "Friday groceries, Sunday meal prep, and open social energy stay part of the plan instead of getting squeezed out."
+      label: "Exercise anchors",
+      value: plannerAnchorLabel(
+        [
+          profile.preferredExercises.lowerSquat,
+          profile.preferredExercises.upperPullMain,
+          profile.preferredExercises.lowerPosteriorMain,
+          profile.preferredExercises.upperGymPull
+        ],
+        "Back Squat • Pull-Up • Romanian Deadlift • Lat Pulldown",
+        4
+      ),
+      detail: "These recurring lifts now shape the suggested routines instead of the plan starting from a blank template."
     }
   ];
 
-  const days = surfFirstWeekBlueprint();
+  const days = surfFirstWeekBlueprint(profile, strategy);
 
   return `
     <div class="coach-plan-metrics">
@@ -4516,7 +4905,7 @@ function buildSurfFirstPlanSummaryMarkup(installedBlock) {
       <p class="eyebrow">${installedBlock ? "Installed" : "What the week looks like"}</p>
       <div class="list-title">${installedBlock ? `${installedBlock.name} is active` : "Low-cost land training around surf"}</div>
       <div class="helper-text">
-        Built around your current profile: surf is the main skill goal, your 5 km speed and general run engine should stay alive, lower-body compound strength should hold, and upper-body work should bias calisthenics skill without stealing freshness for work or life.
+        Built around your logged patterns instead of only a preset: surf still stays first, upper work stays present as one cali touch plus one gym-balance touch, and when lower-body strength shows up as a real anchor in your history the plan adds a short second lower support touch instead of pretending one leg day will cover everything.
       </div>
     </div>
 
@@ -4602,6 +4991,252 @@ function persistPlannerSettingsFromInputs() {
   renderPlannerPanels();
 }
 
+function plannerWeekKey(dateString) {
+  const monday = localDate(dateString);
+  const weekdayIndex = (monday.getDay() + 6) % 7;
+  monday.setDate(monday.getDate() - weekdayIndex);
+  return normalizeDateString(monday.toISOString());
+}
+
+function createAreaScoreMap() {
+  return Object.fromEntries(bodyAreas.map((area) => [area.key, 0]));
+}
+
+function workoutExerciseText(workout = {}) {
+  return (workout.exerciseLogs || [])
+    .map((entry) => entry?.name || "")
+    .join(" ")
+    .toLowerCase();
+}
+
+function workoutAreaScores(workout = {}) {
+  const scores = createAreaScoreMap();
+
+  (workout.loadedAreas || []).forEach((area) => {
+    if (scores[area] != null) {
+      scores[area] += 2;
+    }
+  });
+
+  (workout.exerciseLogs || []).forEach((entry) => {
+    inferAreasFromImportedExercise(entry?.name || "").forEach((area) => {
+      if (scores[area] != null) {
+        scores[area] += 1;
+      }
+    });
+  });
+
+  const text = `${workout.title || ""} ${workout.notes || ""}`.toLowerCase();
+
+  if (/\b(?:lower|leg day|legs?|squat|deadlift|hinge|posterior|glute|hamstring)\b/.test(text)) {
+    scores.legs += 1;
+    scores.glutes += 1;
+  }
+
+  if (/\b(?:upper|bench|press|row|pull|push|dip|chin|shoulder)\b/.test(text)) {
+    scores.chest += 1;
+    scores.back += 1;
+    scores.shoulders += 1;
+    scores.arms += 1;
+  }
+
+  return scores;
+}
+
+function isStrengthLikeWorkout(workout = {}) {
+  const emphasis = sessionKinds[workout.kind]?.emphasis;
+  const text = `${workout.title || ""} ${workout.notes || ""} ${workoutExerciseText(workout)}`.toLowerCase();
+
+  return emphasis === "strength"
+    || emphasis === "power"
+    || (
+      workout.kind === "functional"
+      && (
+        (workout.exerciseLogs || []).length > 0
+        || /\b(?:upper|lower|strength|gym|pull|push|calisthenics|skill)\b/.test(text)
+      )
+    );
+}
+
+function workoutHasLowerLiftPattern(workout = {}) {
+  const text = `${workout.title || ""} ${workout.notes || ""} ${workoutExerciseText(workout)}`.toLowerCase();
+  return /\b(?:front squat|back squat|squat|deadlift|rdl|romanian deadlift|lunge|split squat|leg press|hip thrust|leg curl|leg extension|calf raise|step up)\b/.test(text);
+}
+
+function workoutHasUpperLiftPattern(workout = {}) {
+  const text = `${workout.title || ""} ${workout.notes || ""} ${workoutExerciseText(workout)}`.toLowerCase();
+  return /\b(?:bench|press|row|pull[\s-]*up|chin[\s-]*up|lat pull|dip|curl|pushdown|lateral raise|face pull|landmine)\b/.test(text);
+}
+
+function workoutTargetsLowerStrength(workout = {}) {
+  if (!isStrengthLikeWorkout(workout)) {
+    return false;
+  }
+
+  const scores = workoutAreaScores(workout);
+  const lowerScore = scores.legs + scores.glutes;
+  return lowerScore >= 3 && (workout.kind === "strength" || workoutHasLowerLiftPattern(workout));
+}
+
+function workoutTargetsUpperStrength(workout = {}) {
+  if (!isStrengthLikeWorkout(workout)) {
+    return false;
+  }
+
+  const scores = workoutAreaScores(workout);
+  const upperScore = scores.chest + scores.back + scores.shoulders + scores.arms;
+  return upperScore >= 4 && (workout.kind === "strength" || workoutHasUpperLiftPattern(workout));
+}
+
+function favoriteHistoryExercise(workouts = [], patterns = [], fallbackName = "", workoutFilter = () => true) {
+  const counts = new Map();
+
+  workouts.forEach((workout) => {
+    if (!workoutFilter(workout)) {
+      return;
+    }
+
+    (workout.exerciseLogs || []).forEach((entry) => {
+      const name = entry?.name?.trim();
+      if (!name) {
+        return;
+      }
+
+      if (patterns.some((pattern) => pattern.test(name))) {
+        counts.set(name, (counts.get(name) || 0) + 1);
+      }
+    });
+  });
+
+  if (!counts.size) {
+    return fallbackName;
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    [0][0];
+}
+
+function uniqueValues(values = []) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function plannerAnchorLabel(values = [], fallback = "", limit = 3) {
+  const selected = uniqueValues(values).slice(0, limit);
+  return selected.length ? selected.join(" • ") : fallback;
+}
+
+function personalizeRoutineExercise(baseExercise, preferredName) {
+  const name = preferredName || baseExercise.name;
+  const latestEntry = getPreviousExerciseEntry(name);
+  const summary = latestEntry ? summarizeExerciseLog(latestEntry) : null;
+
+  return {
+    ...baseExercise,
+    id: uid(),
+    name,
+    targetWeight: summary?.keyWeight ?? baseExercise.targetWeight ?? null,
+    targetLogReps: summary?.reps ?? baseExercise.targetLogReps ?? null
+  };
+}
+
+function buildTrainingHistoryProfile(workouts = state.workouts) {
+  const fallbackExercises = PERSONAL_HISTORY_BASELINE.fallbackExercises;
+  const sorted = [...(Array.isArray(workouts) ? workouts : [])].sort((a, b) => compareDates(b.date, a.date));
+  if (!sorted.length) {
+    return {
+      sampleWorkouts: 0,
+      weekCount: 0,
+      observedLowerPerWeek: 0,
+      observedUpperPerWeek: 0,
+      observedQualityRunsPerWeek: 0,
+      baseline: PERSONAL_HISTORY_BASELINE,
+      preferredExercises: {
+        lowerSquat: fallbackExercises.lowerSquat,
+        lowerQuadPress: fallbackExercises.lowerQuadPress,
+        lowerPosteriorMain: fallbackExercises.lowerPosteriorMain,
+        lowerPosteriorSupport: fallbackExercises.lowerPosteriorSupport,
+        lowerSingle: fallbackExercises.lowerSingle,
+        lowerQuadAccessory: fallbackExercises.lowerQuadAccessory,
+        lowerHamAccessory: fallbackExercises.lowerHamAccessory,
+        lowerCalves: fallbackExercises.lowerCalves,
+        upperPullMain: fallbackExercises.upperPullMain,
+        upperGymPull: fallbackExercises.upperGymPull,
+        upperRow: fallbackExercises.upperRow,
+        upperPressMain: fallbackExercises.upperPressMain,
+        upperDip: fallbackExercises.upperDip,
+        upperVerticalPress: fallbackExercises.upperVerticalPress,
+        upperAccessory: fallbackExercises.upperAccessory,
+        upperScap: fallbackExercises.upperScap,
+        core: fallbackExercises.core
+      },
+      signatureExercises: {
+        lower: [fallbackExercises.lowerSquat, fallbackExercises.lowerSingle, fallbackExercises.lowerPosteriorMain],
+        upper: [fallbackExercises.upperPullMain, fallbackExercises.upperGymPull, fallbackExercises.upperPressMain]
+      }
+    };
+  }
+
+  const recent = sorted.filter((workout) => daysAgo(workout.date) <= PERSONAL_PLAN_LOOKBACK_DAYS - 1);
+  const fallbackCount = Math.min(sorted.length, Math.max(PERSONAL_PLAN_MIN_HISTORY_WORKOUTS, 40));
+  const sample = recent.length >= PERSONAL_PLAN_MIN_HISTORY_WORKOUTS ? recent : sorted.slice(0, fallbackCount);
+  const weekCount = Math.max(1, new Set(sample.map((workout) => plannerWeekKey(workout.date))).size);
+
+  const observedLowerPerWeek = sample.filter((workout) => workoutTargetsLowerStrength(workout)).length / weekCount;
+  const observedUpperPerWeek = sample.filter((workout) => workoutTargetsUpperStrength(workout)).length / weekCount;
+  const observedQualityRunsPerWeek = sample.filter((workout) => isQualityRunSession(workout)).length / weekCount;
+
+  const preferredExercises = {
+    lowerSquat: favoriteHistoryExercise(sample, [/\bfront squat\b/i, /\bback squat\b/i, /\bsquat\b/i], fallbackExercises.lowerSquat, workoutTargetsLowerStrength),
+    lowerQuadPress: favoriteHistoryExercise(sample, [/\bhack squat\b/i, /\bleg press\b/i, /\bgoblet squat\b/i], fallbackExercises.lowerQuadPress, workoutTargetsLowerStrength),
+    lowerPosteriorMain: favoriteHistoryExercise(sample, [/\bromanian deadlift\b/i, /\brdl\b/i, /\bdeadlift\b/i], fallbackExercises.lowerPosteriorMain, workoutTargetsLowerStrength),
+    lowerPosteriorSupport: favoriteHistoryExercise(sample, [/\bhip thrust\b/i, /\bglute bridge\b/i, /\bback extension\b/i], fallbackExercises.lowerPosteriorSupport, workoutTargetsLowerStrength),
+    lowerSingle: favoriteHistoryExercise(sample, [/\bbulgarian\b/i, /\bsplit squat\b/i, /\blunge\b/i, /\bstep up\b/i], fallbackExercises.lowerSingle, workoutTargetsLowerStrength),
+    lowerQuadAccessory: favoriteHistoryExercise(sample, [/\bleg extension\b/i, /\bsissy squat\b/i, /\bquad raise\b/i], fallbackExercises.lowerQuadAccessory, workoutTargetsLowerStrength),
+    lowerHamAccessory: favoriteHistoryExercise(sample, [/\bham(?:string)?\s*curl\b/i, /\bleg curl\b/i, /\blower back\b/i, /\bsquize\b/i], fallbackExercises.lowerHamAccessory, workoutTargetsLowerStrength),
+    lowerCalves: favoriteHistoryExercise(sample, [/\bcalf raise\b/i, /\btibialis\b/i], fallbackExercises.lowerCalves, workoutTargetsLowerStrength),
+    upperPullMain: favoriteHistoryExercise(sample, [/\bpull[\s-]*up\b/i, /\bchin[\s-]*up\b/i], fallbackExercises.upperPullMain, workoutTargetsUpperStrength),
+    upperGymPull: favoriteHistoryExercise(sample, [/\blat pull/i, /\bpull[\s-]*down\b/i, /\blat pd\b/i, /\bchin machine\b/i], fallbackExercises.upperGymPull, workoutTargetsUpperStrength),
+    upperRow: favoriteHistoryExercise(sample, [/\brow\b/i, /\bseated row\b/i, /\bt-bar row\b/i], fallbackExercises.upperRow, workoutTargetsUpperStrength),
+    upperPressMain: favoriteHistoryExercise(sample, [/\bbench\b/i, /\bincline\b/i, /\bchest press\b/i], fallbackExercises.upperPressMain, workoutTargetsUpperStrength),
+    upperDip: favoriteHistoryExercise(sample, [/\bdips?\b/i, /\btricep push up\b/i], fallbackExercises.upperDip, workoutTargetsUpperStrength),
+    upperVerticalPress: favoriteHistoryExercise(sample, [/\boverhead press\b/i, /\bshoulder press\b/i, /\bmilitary press\b/i, /\bhspu\b/i], fallbackExercises.upperVerticalPress, workoutTargetsUpperStrength),
+    upperAccessory: favoriteHistoryExercise(sample, [/\blateral raise\b/i, /\bfront raise\b/i, /\brear delt\b/i], fallbackExercises.upperAccessory, workoutTargetsUpperStrength),
+    upperScap: favoriteHistoryExercise(sample, [/\bface pull\b/i, /\bstraight-arm lat\b/i, /\breverse pec deck\b/i], fallbackExercises.upperScap, workoutTargetsUpperStrength),
+    core: favoriteHistoryExercise(sample, [/\bplank\b/i, /\bleg raise\b/i, /\bhang(?:ing)?\b/i, /\bdragon flag\b/i], fallbackExercises.core, () => true)
+  };
+
+  return {
+    sampleWorkouts: sample.length,
+    weekCount,
+    observedLowerPerWeek,
+    observedUpperPerWeek,
+    observedQualityRunsPerWeek,
+    baseline: PERSONAL_HISTORY_BASELINE,
+    preferredExercises,
+    signatureExercises: {
+      lower: uniqueValues([preferredExercises.lowerSquat, preferredExercises.lowerSingle, preferredExercises.lowerPosteriorMain]),
+      upper: uniqueValues([preferredExercises.upperPullMain, preferredExercises.upperGymPull, preferredExercises.upperPressMain])
+    }
+  };
+}
+
+function buildSurfFirstPlanStrategy(profile = buildTrainingHistoryProfile()) {
+  const lowerSessions = Math.max(PERSONAL_HISTORY_BASELINE.minimumLowerSessions, profile.observedLowerPerWeek >= 1.6 ? 2 : 1);
+  const upperSessions = Math.max(PERSONAL_HISTORY_BASELINE.minimumUpperSessions, profile.observedUpperPerWeek >= 1.6 ? 2 : 1);
+  const qualityRuns = Math.max(PERSONAL_HISTORY_BASELINE.minimumQualityRuns, profile.observedQualityRunsPerWeek >= 1.35 ? 2 : 1);
+
+  return {
+    lowerSessions,
+    upperSessions,
+    qualityRuns,
+    useLowerSupportReset: lowerSessions > 1,
+    supportsOptionalLongRun: PERSONAL_HISTORY_BASELINE.supportsOptionalLongRun,
+    preferredLowerSplit: PERSONAL_HISTORY_BASELINE.preferredLowerSplit,
+    preferredUpperSplit: PERSONAL_HISTORY_BASELINE.preferredUpperSplit
+  };
+}
+
 function getSurfFirstBlock() {
   return state.blocks.find((block) => block.id === plannerSettings().surfFirstBlockId)
     || state.blocks.find((block) => block.systemKey === SURF_FIRST_BLOCK_KEY)
@@ -4609,20 +5244,22 @@ function getSurfFirstBlock() {
 }
 
 function installSurfFirstBasePlan({ silent = false } = {}) {
+  const profile = buildTrainingHistoryProfile();
+  const strategy = buildSurfFirstPlanStrategy(profile);
   const routineIds = {};
 
-  surfFirstPlanRoutines().forEach((routine) => {
+  surfFirstPlanRoutines(profile, strategy).forEach((routine) => {
     routineIds[routine.systemKey] = upsertSystemRoutine(routine);
   });
 
-  const block = buildSurfFirstPlanBlock(routineIds);
+  const block = buildSurfFirstPlanBlock(routineIds, profile, strategy);
   const blockId = upsertSystemBlock(block);
   plannerSettings().surfFirstBlockId = blockId;
   state.activeBlockId = blockId;
   persistState();
   renderDataViews();
   ui.surfPlanStatus = {
-    message: "Surf-first base plan installed and set active. The week now prioritizes daily surf windows, one lower-body hold, two upper sessions, one run sharpener, and protected grocery / meal-prep anchors.",
+    message: `Surf-first base plan installed and set active. The week now prioritizes daily surf windows, ${strategy.lowerSessions} lower-body touch${strategy.lowerSessions === 1 ? "" : "es"}, ${strategy.upperSessions} upper sessions, ${strategy.qualityRuns} run anchor${strategy.qualityRuns === 1 ? "" : "s"}, and protected grocery / meal-prep anchors.`,
     tone: "success"
   };
   renderPlannerPanels();
@@ -4631,50 +5268,67 @@ function installSurfFirstBasePlan({ silent = false } = {}) {
   }
 }
 
-function surfFirstPlanRoutines() {
+function surfFirstPlanRoutines(profile = buildTrainingHistoryProfile(), strategy = buildSurfFirstPlanStrategy(profile)) {
+  const preferred = profile.preferredExercises;
+
   return [
     {
       systemKey: "surf-first-lower-hold-v1",
-      name: "Surf-First Lower Hold",
+      name: "Surf-First Lower A: Squat + Quads",
       kind: "strength",
       sessionKind: "strength",
       estimatedMinutes: 55,
-      notes: "Main goal: hold controlled 60 to 65 kg squats for 4 to 6 reps, keep Bulgarian split squats alive, and leave the gym with enough freshness to surf, work, and stay social. If the surf load was light and you still feel fresh, add 1 or 2 light leg-extension sets and stop there.",
+      notes: `Main goal: keep ${preferred.lowerSquat.toLowerCase()} and your quad pattern alive without letting the session eat the whole day. This is the main squat-biased lower anchor.`,
       exercises: [
-        { id: uid(), name: "Back Squat", targetSets: 3, targetReps: "4-6", targetLogReps: 5, targetWeight: 60, targetEffortPercent: 85, targetRestSeconds: 150, notes: "Controlled. Stop before the grind." },
-        { id: uid(), name: "Bulgarian Split Squat", targetSets: 3, targetReps: "6-8 each", targetLogReps: 8, targetWeight: 22, targetEffortPercent: 85, targetRestSeconds: 105, notes: "Use the 22 kg zone when it feels solid." },
-        { id: uid(), name: "Barbell Lunge", targetSets: 2, targetReps: "6 each", targetLogReps: 6, targetWeight: 45, targetEffortPercent: 82, targetRestSeconds: 90, notes: "Keep it crisp instead of crushing." },
-        { id: uid(), name: "Calf Raise", targetSets: 3, targetReps: "10-12", targetLogReps: 12, targetWeight: 90, targetEffortPercent: 85, targetRestSeconds: 75, notes: "Smooth tempo." }
+        personalizeRoutineExercise({ name: "Back Squat", targetSets: 3, targetReps: "4-6", targetLogReps: 5, targetWeight: 60, targetEffortPercent: 85, targetRestSeconds: 150, notes: "Controlled. Stop before the grind." }, preferred.lowerSquat),
+        personalizeRoutineExercise({ name: "Hack Squat", targetSets: 3, targetReps: "6-10", targetLogReps: 8, targetWeight: null, targetEffortPercent: 82, targetRestSeconds: 120, notes: "Use a machine press pattern to feed quads without needing another heavy barbell slot." }, preferred.lowerQuadPress),
+        personalizeRoutineExercise({ name: "Bulgarian Split Squat", targetSets: 3, targetReps: "6-8 each", targetLogReps: 8, targetWeight: 22, targetEffortPercent: 85, targetRestSeconds: 105, notes: "Single-leg control matters more than extra volume." }, preferred.lowerSingle),
+        personalizeRoutineExercise({ name: "Leg Extension", targetSets: 2, targetReps: "10-15", targetLogReps: 12, targetWeight: null, targetEffortPercent: 78, targetRestSeconds: 60, notes: "Simple quad finish." }, preferred.lowerQuadAccessory),
+        personalizeRoutineExercise({ name: "Calf Raise", targetSets: 2, targetReps: "10-12", targetLogReps: 12, targetWeight: 90, targetEffortPercent: 80, targetRestSeconds: 75, notes: "Smooth tempo." }, preferred.lowerCalves)
+      ]
+    },
+    {
+      systemKey: "surf-first-lower-support-v1",
+      name: "Surf-First Lower B: Posterior Support",
+      kind: "strength",
+      sessionKind: "strength",
+      estimatedMinutes: 40,
+      notes: `Short second lower-body touch for weeks where one leg session is not enough. This one is hinge / glute / ham biased so you keep two lower exposures without turning both into quad-smashers.`,
+      exercises: [
+        personalizeRoutineExercise({ name: "Romanian Deadlift", targetSets: 3, targetReps: "6-8", targetLogReps: 6, targetWeight: 75, targetEffortPercent: 80, targetRestSeconds: 105, notes: "Leave a little in reserve." }, preferred.lowerPosteriorMain),
+        personalizeRoutineExercise({ name: "Hip Thrust", targetSets: 3, targetReps: "8-10", targetLogReps: 10, targetWeight: 90, targetEffortPercent: 82, targetRestSeconds: 90, notes: "Glute support without another huge fatigue bill." }, preferred.lowerPosteriorSupport),
+        personalizeRoutineExercise({ name: "Bulgarian Split Squat", targetSets: 2, targetReps: "6 each", targetLogReps: 6, targetWeight: 20, targetEffortPercent: 80, targetRestSeconds: 90, notes: "Keep the single-leg pattern alive." }, preferred.lowerSingle),
+        personalizeRoutineExercise({ name: "Hamstring Curl", targetSets: 2, targetReps: "10-12", targetLogReps: 10, targetWeight: null, targetEffortPercent: 78, targetRestSeconds: 60, notes: "Easy to recover from, useful to keep." }, preferred.lowerHamAccessory)
       ]
     },
     {
       systemKey: "surf-first-upper-skill-v1",
-      name: "Surf-First Upper Skill",
+      name: "Surf-First Upper A: Cali Pull Skill",
       kind: "mixed",
       sessionKind: "functional",
       estimatedMinutes: 50,
-      notes: "Outdoor calisthenics first choice. Pull-ups, dips, handstand push-up work, muscle-up transitions, and trunk control matter more than bodybuilding fatigue right now.",
+      notes: `Outdoor calisthenics first choice. ${preferred.upperPullMain}, ${preferred.upperDip.toLowerCase()}, hanging work, and trunk control matter more than bodybuilding fatigue right now.`,
       exercises: [
-        { id: uid(), name: "Pull-Up", targetSets: 4, targetReps: "4-6", targetLogReps: 5, targetEffortPercent: 85, targetRestSeconds: 120, notes: "Stay strict." },
-        { id: uid(), name: "Dips", targetSets: 3, targetReps: "6-8", targetLogReps: 8, targetWeight: 5, targetEffortPercent: 85, targetRestSeconds: 120, notes: "Hold the 5 kg to 10 kg range with clean reps." },
-        { id: uid(), name: "HSPU Progression", targetSets: 4, targetReps: "3-5", targetLogReps: 4, targetEffortPercent: 85, targetRestSeconds: 120, notes: "Keep the reps pretty." },
-        { id: uid(), name: "Muscle-Up Transition", targetSets: 4, targetReps: "2-4", targetLogReps: 3, targetEffortPercent: 80, targetRestSeconds: 120, notes: "Explosive pull and turnover quality." },
-        { id: uid(), name: "Flag Progression", targetSets: 3, targetReps: "20-30 s", targetSetSeconds: 30, targetRestSeconds: 90, notes: "Trunk tension." }
+        personalizeRoutineExercise({ name: "Pull-Up", targetSets: 4, targetReps: "4-6", targetLogReps: 5, targetEffortPercent: 85, targetRestSeconds: 120, notes: "Stay strict." }, preferred.upperPullMain),
+        personalizeRoutineExercise({ name: "Dips", targetSets: 3, targetReps: "6-8", targetLogReps: 8, targetWeight: 5, targetEffortPercent: 85, targetRestSeconds: 120, notes: "Clean reps first." }, preferred.upperDip),
+        personalizeRoutineExercise({ name: "Row", targetSets: 3, targetReps: "6-10", targetLogReps: 8, targetWeight: 40, targetEffortPercent: 80, targetRestSeconds: 90, notes: "One row pattern keeps the session useful if skill quality drops." }, preferred.upperRow),
+        personalizeRoutineExercise({ name: "Weighted Plank", targetSets: 3, targetReps: "30-45 s", targetSetSeconds: 40, targetRestSeconds: 75, notes: "Trunk tension." }, preferred.core),
+        { id: uid(), name: "Human Flag / HSPU Skill", targetSets: 3, targetReps: "2-4 quality reps", targetRestSeconds: 120, notes: "Only if the shoulders feel good." }
       ]
     },
     {
       systemKey: "surf-first-upper-pull-v1",
-      name: "Surf-First Upper Pull + Shoulder Support",
+      name: "Surf-First Upper B: Gym Upper Balance",
       kind: "strength",
       sessionKind: "strength",
-      estimatedMinutes: 50,
-      notes: "Gym or park. Keep rows, shoulder strength, and paddling support without turning this into a draining upper-body marathon.",
+      estimatedMinutes: 55,
+      notes: `Gym-first upper touch. Your notebook pages keep circling back to one mixed upper day with a vertical pull, a row, one press anchor, and a little shoulder support instead of a pure push split.`,
       exercises: [
-        { id: uid(), name: "Row", targetSets: 4, targetReps: "6-8", targetLogReps: 8, targetWeight: 45, targetEffortPercent: 85, targetRestSeconds: 120, notes: "Use the 40 to 50 kg zone when form is strong." },
-        { id: uid(), name: "Lat Pulldown", targetSets: 3, targetReps: "6-8", targetLogReps: 8, targetEffortPercent: 82, targetRestSeconds: 90, notes: "Shoulders down, smooth pull." },
-        { id: uid(), name: "Shoulder Press", targetSets: 3, targetReps: "6-8", targetLogReps: 6, targetEffortPercent: 82, targetRestSeconds: 90, notes: "Controlled path." },
-        { id: uid(), name: "Lateral Raise", targetSets: 2, targetReps: "10-15", targetLogReps: 12, targetEffortPercent: 75, targetRestSeconds: 60, notes: "Stop before shoulder burn changes the day." },
-        { id: uid(), name: "Straight-Arm Lat Pulldown", targetSets: 2, targetReps: "10-12", targetLogReps: 12, targetEffortPercent: 75, targetRestSeconds: 60, notes: "Paddling support." }
+        personalizeRoutineExercise({ name: "Lat Pulldown", targetSets: 3, targetReps: "6-10", targetLogReps: 8, targetEffortPercent: 82, targetRestSeconds: 90, notes: "Vertical pull anchor for the gym-based upper touch." }, preferred.upperGymPull),
+        personalizeRoutineExercise({ name: "Row", targetSets: 3, targetReps: "6-8", targetLogReps: 8, targetWeight: 45, targetEffortPercent: 80, targetRestSeconds: 90, notes: "Keep the shoulders balanced and the upper day useful." }, preferred.upperRow),
+        personalizeRoutineExercise({ name: "Bench Press", targetSets: 3, targetReps: "4-6", targetLogReps: 5, targetWeight: 40, targetEffortPercent: 82, targetRestSeconds: 120, notes: "Simple heavy press anchor." }, preferred.upperPressMain),
+        personalizeRoutineExercise({ name: "Shoulder Press", targetSets: 2, targetReps: "6-8", targetLogReps: 6, targetEffortPercent: 80, targetRestSeconds: 90, notes: "Controlled path. Leave some shoulder room for surf." }, preferred.upperVerticalPress),
+        personalizeRoutineExercise({ name: "Face Pull", targetSets: 2, targetReps: "10-15", targetLogReps: 12, targetEffortPercent: 72, targetRestSeconds: 60, notes: "Scap support and shoulder health." }, preferred.upperScap)
       ]
     },
     {
@@ -4683,7 +5337,9 @@ function surfFirstPlanRoutines() {
       kind: "conditioning",
       sessionKind: "run",
       estimatedMinutes: 40,
-      notes: "One quality run each week is the minimum anchor to hold your 22 to 23 minute 5k feel. Use 6 x 400 m around 1:42 to 1:48, 4 x 800 m around 3:38 to 3:45, or 12 to 20 minutes of tempo around 4:45 to 4:55 / km if the surf is flat or low-value.",
+      notes: strategy.qualityRuns > 1
+        ? "Your history can still support two sharper run touches on flatter or lower-value surf weeks. Protect Wednesday as the first quality run and use a second touch only when energy and ocean both allow it."
+        : "One quality run each week is the minimum anchor to hold your 5k feel. Use 6 x 400 m, 4 x 800 m, or a short tempo if the surf is flat or low-value.",
       exercises: []
     },
     {
@@ -4711,67 +5367,153 @@ function surfFirstPlanRoutines() {
   ];
 }
 
-function surfFirstWeekBlueprint() {
+function surfFirstWeekBlueprint(profile = buildTrainingHistoryProfile(), strategy = buildSurfFirstPlanStrategy(profile)) {
+  const preferred = profile.preferredExercises;
+  const fridayEntry = strategy.useLowerSupportReset
+    ? {
+        dayIndex: 4,
+        dayLabel: "Fri",
+        focus: "Groceries + lower B posterior support",
+        detail: `Treat groceries as training support, then use a short ${preferred.lowerPosteriorMain.toLowerCase()} + ${preferred.lowerPosteriorSupport.toLowerCase()} touch so two lower days fit without wrecking the week.`,
+        kind: "strength",
+        routineKey: "surf-first-lower-support-v1",
+        sessionTitle: "Groceries + lower support reset",
+        details: "Groceries stay protected. If the morning surf was big, shrink this to the shortest useful support version only.",
+        calendar: {
+          startTime: "13:30",
+          endTime: "14:45",
+          summary: "Groceries + lower B posterior support",
+          description: "Treat groceries as training support, then do the shortest useful second lower-body touch: hinge, hip thrust, and one ham / unilateral accessory if recovery is good.",
+          category: "strength",
+          flexible: true
+        }
+      }
+    : {
+        dayIndex: 4,
+        dayLabel: "Fri",
+        focus: "Recovery, groceries, and keep the day light",
+        detail: "This is the day that protects the rest of the week. Surf if it is good, but otherwise use a small recovery reset and keep the admin easy.",
+        kind: "mobility",
+        routineKey: "surf-first-recovery-reset-v1",
+        sessionTitle: "Recovery reset + groceries",
+        details: "Groceries are a real training-support task. If you surf, keep the rest of the day lower-cost.",
+        calendar: {
+          startTime: "13:30",
+          endTime: "14:45",
+          summary: "Groceries + recovery reset",
+          description: "Treat groceries as training support. If surf is good, surf first and keep the rest of the day low-cost.",
+          category: "life",
+          flexible: true
+        }
+      };
+
   return [
     {
       dayIndex: 0,
       dayLabel: "Mon",
-      focus: "Surf first, then lower strength hold",
-      detail: "Keep the squat and split-squat pattern alive with low volume and clean reps. If the surf was heavy, shorten the lift instead of forcing full volume.",
+      focus: "Surf first, then lower A squat + quads",
+      detail: `Keep ${preferred.lowerSquat.toLowerCase()}, ${preferred.lowerQuadPress.toLowerCase()}, and ${preferred.lowerSingle.toLowerCase()} alive with low volume and clean reps. If the surf was heavy, shorten the lift instead of forcing full volume.`,
       kind: "strength",
       routineKey: "surf-first-lower-hold-v1",
-      sessionTitle: "Surf first / Lower strength hold",
-      details: "Morning surf if the conditions are worth it. Midday lift is the anchor. Keep it to 45 to 55 minutes and stop before grinding."
+      sessionTitle: "Surf first / Lower A squat + quads",
+      details: "Morning surf if the conditions are worth it. Midday lift is the anchor. Keep it to 45 to 55 minutes and stop before grinding.",
+      calendar: {
+        startTime: "13:45",
+        endTime: "15:00",
+        summary: "Lower A squat + quads",
+        description: "Keep your main squat, quad press pattern, and unilateral support alive. If morning surf was big, keep only the shortest useful version.",
+        category: "strength",
+        flexible: true
+      }
     },
     {
       dayIndex: 1,
       dayLabel: "Tue",
-      focus: "Upper calisthenics skill",
-      detail: "Use the outdoor park when possible. Prioritize pull-ups, dips, handstand push-up progressions, and muscle-up skill over fatigue for its own sake.",
+      focus: "Upper A cali pull skill",
+      detail: `Use the outdoor park when possible. Prioritize ${preferred.upperPullMain.toLowerCase()}, ${preferred.upperDip.toLowerCase()}, hanging work, and trunk control over fatigue for its own sake.`,
       kind: "functional",
       routineKey: "surf-first-upper-skill-v1",
-      sessionTitle: "Upper calisthenics skill",
-      details: "If the shoulders are cooked from surf, cut the volume in half and keep only the best-quality skill reps."
+      sessionTitle: "Upper A cali pull skill",
+      details: "If the shoulders are cooked from surf, cut the volume in half and keep only the best-quality skill reps.",
+      calendar: {
+        startTime: "13:45",
+        endTime: "15:00",
+        summary: "Upper A cali pull skill",
+        description: "Outdoor first choice. Keep the reps clean and shorten it if the shoulders are cooked from surf.",
+        category: "skill",
+        flexible: true
+      }
     },
     {
       dayIndex: 2,
       dayLabel: "Wed",
       focus: "Run sharpener or swim fallback",
-      detail: "This is the weekly engine anchor. If the surf is excellent, surf and move the run to flat days. If the ocean is flat, hit the quality run.",
+      detail: strategy.qualityRuns > 1
+        ? "This is the first protected engine anchor. If the ocean is flat, hit the quality run and leave room for one more sharp touch later in the week only if energy stays good."
+        : "This is the weekly engine anchor. If the surf is excellent, surf and move the run to flat days. If the ocean is flat, hit the quality run.",
       kind: "run",
       routineKey: "surf-first-run-sharpener-v1",
       sessionTitle: "5k hold sharpener",
-      details: "Protect the 5 km speed with one quality run. Swap to easy swim if the shoulders want cleaner volume and the legs need a break."
+      details: "Protect the run engine here first. Swap to easy swim if the shoulders want cleaner volume and the legs need a break.",
+      calendar: {
+        startTime: "13:45",
+        endTime: "14:45",
+        summary: strategy.qualityRuns > 1 ? "Quality run anchor / swim fallback" : "5k sharpener / swim fallback",
+        description: strategy.qualityRuns > 1
+          ? "This is the first protected quality run. If the surf is excellent or recovery is off, swap to the swim reset and keep the run for the next flat day."
+          : "One quality run keeps the run engine alive. If the surf is excellent or the legs are flat, swap to an easy swim reset instead.",
+        category: "run",
+        flexible: true
+      }
     },
     {
       dayIndex: 3,
       dayLabel: "Thu",
-      focus: "Upper pull and shoulder support",
-      detail: "Keep rowing and shoulder strength present so paddling and calisthenics have enough support, but do not turn this into a bodybuilder fatigue day.",
+      focus: "Upper B gym upper balance",
+      detail: `Keep ${preferred.upperGymPull.toLowerCase()}, ${preferred.upperRow.toLowerCase()}, and one press / shoulder-support pattern present so the second upper touch feels like your actual gym pages rather than a pure push day.`,
       kind: "strength",
       routineKey: "surf-first-upper-pull-v1",
-      sessionTitle: "Upper pull + shoulder support",
-      details: "Gym or calisthenics park. If surf quality is excellent, do the shortest useful version only."
+      sessionTitle: "Upper B gym upper balance",
+      details: "Gym or calisthenics park. If surf quality is excellent, do the shortest useful version only.",
+      calendar: {
+        startTime: "13:45",
+        endTime: "15:00",
+        summary: "Upper B gym upper balance",
+        description: "Keep pull, row, and one press anchor present without turning the session into a drain.",
+        category: "strength",
+        flexible: true
+      }
     },
-    {
-      dayIndex: 4,
-      dayLabel: "Fri",
-      focus: "Recovery, groceries, and keep the day light",
-      detail: "This is the day that protects the rest of the week. Surf if it is good, but otherwise use a small recovery reset and keep the admin easy.",
-      kind: "mobility",
-      routineKey: "surf-first-recovery-reset-v1",
-      sessionTitle: "Recovery reset + groceries",
-      details: "Groceries are a real training-support task. If you surf, keep the rest of the day lower-cost."
-    },
+    fridayEntry,
     {
       dayIndex: 5,
       dayLabel: "Sat",
       focus: "Best surf and social day",
-      detail: "Use this as your most open outside day. Good waves can turn into a longer or second surf. Good people can turn this into the social anchor.",
+      detail: strategy.qualityRuns > 1
+        ? "Use this as the flex day. Great waves can turn into a longer surf; flat surf and good energy can turn into a short second quality run or a controlled long run."
+        : (strategy.supportsOptionalLongRun
+          ? "Use this as your open outside day. Good waves can turn into surf, but flat weeks can make this the best slot for a long run."
+          : "Use this as your most open outside day. Good waves can turn into a longer or second surf. Good people can turn this into the social anchor."),
       kind: "surf",
       routineKey: null,
       sessionTitle: "Surf priority / social buffer",
-      details: "If there is no surf and no social pull, optional easy calisthenics skills or a very easy run are enough."
+      details: strategy.qualityRuns > 1
+        ? "If there is no surf and no social pull, this is the flex slot for the second run touch. If life is busy, leave it open."
+        : (strategy.supportsOptionalLongRun
+          ? "If there is no surf and no social pull, use this as the long-run buffer before you force extra gym work."
+          : "If there is no surf and no social pull, optional easy calisthenics skills or a very easy run are enough."),
+      calendar: {
+        startTime: "17:00",
+        endTime: "20:00",
+        summary: "Open social / outside buffer",
+        description: strategy.qualityRuns > 1
+          ? "Keep this flexible for friends, surf, outside time, or a second short quality run if the ocean is flat and energy is still good."
+          : (strategy.supportsOptionalLongRun
+            ? "Keep this flexible for surf, friends, or a longer aerobic run if the waves are poor and energy is there."
+            : "Keep this loose for friends, Spanish, outside time, or a second surf if the day is too good to pass up."),
+        category: "open",
+        flexible: true
+      }
     },
     {
       dayIndex: 6,
@@ -4781,13 +5523,21 @@ function surfFirstWeekBlueprint() {
       kind: "swim",
       routineKey: "surf-first-swim-reset-v1",
       sessionTitle: "Meal prep / swim reset / surf",
-      details: "Meal prep is non-negotiable support work. If the ocean is calling, keep the extra training easy."
+      details: "Meal prep is non-negotiable support work. If the ocean is calling, keep the extra training easy.",
+      calendar: {
+        startTime: "14:00",
+        endTime: "16:00",
+        summary: "Meal prep + week reset",
+        description: "Meal prep is a real performance habit. Add an easy swim or surf only if it gives energy back.",
+        category: "life",
+        flexible: false
+      }
     }
   ];
 }
 
-function buildSurfFirstPlanBlock(routineIds = {}) {
-  const sessions = surfFirstWeekBlueprint().map((entry) => ({
+function buildSurfFirstPlanBlock(routineIds = {}, profile = buildTrainingHistoryProfile(), strategy = buildSurfFirstPlanStrategy(profile)) {
+  const sessions = surfFirstWeekBlueprint(profile, strategy).map((entry) => ({
     id: uid(),
     systemKey: `${SURF_FIRST_BLOCK_KEY}-${entry.dayLabel.toLowerCase()}`,
     dayLabel: entry.dayLabel,
@@ -4800,7 +5550,9 @@ function buildSurfFirstPlanBlock(routineIds = {}) {
   return {
     systemKey: SURF_FIRST_BLOCK_KEY,
     name: "Surf-First Cafe Season",
-    focus: "Surf progression first. Hold the run engine, keep lower strength alive, build upper-body skill, and protect enough energy for work, Spanish, groceries, meal prep, and social life.",
+    focus: strategy.useLowerSupportReset
+      ? "Surf progression first. Hold the run engine, keep two lower-body touches without making both expensive, keep two upper sessions, and still protect enough energy for work, groceries, meal prep, and social life."
+      : "Surf progression first. Hold the run engine, keep lower strength alive, build upper-body skill, and protect enough energy for work, groceries, meal prep, and social life.",
     currentWeekIndex: 0,
     isLooping: true,
     weeks: [
@@ -4808,7 +5560,9 @@ function buildSurfFirstPlanBlock(routineIds = {}) {
         id: uid(),
         systemKey: `${SURF_FIRST_BLOCK_KEY}-week-1`,
         title: "Flexible surf-first base",
-        note: "Morning surf is the first choice. Midday land work is the anchor. Social and life admin stay protected on purpose.",
+        note: strategy.useLowerSupportReset
+          ? "Morning surf is the first choice. Midday land work stays short and useful. The second lower touch is support volume, not another draining leg day."
+          : "Morning surf is the first choice. Midday land work is the anchor. Social and life admin stay protected on purpose.",
         plannedSessions: sessions
       }
     ]
@@ -5075,6 +5829,9 @@ async function replacePulseBoardCalendarEvents(calendarId, events, { startDate, 
 function buildSurfFirstCalendarEvents(startDate, weeksToSync, { includeCafeShifts = true } = {}) {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Madrid";
   const firstMonday = alignDateToMonday(startDate);
+  const profile = buildTrainingHistoryProfile();
+  const strategy = buildSurfFirstPlanStrategy(profile);
+  const blueprint = surfFirstWeekBlueprint(profile, strategy);
   const events = [];
 
   for (let week = 0; week < weeksToSync; week += 1) {
@@ -5108,71 +5865,25 @@ function buildSurfFirstCalendarEvents(startDate, weeksToSync, { includeCafeShift
       }));
     });
 
-    const middayTemplates = [
-      {
-        date: monday,
-        startTime: "13:45",
-        endTime: "15:00",
-        summary: "Lower strength hold",
-        description: "Keep squat control around 60 to 65 kg for 4 to 6 reps, then Bulgarian split squats, lunges, and calves. If morning surf was big, keep only the shortest useful version.",
-        category: "strength",
-        flexible: true
-      },
-      {
-        date: tuesday,
-        startTime: "13:45",
-        endTime: "15:00",
-        summary: "Upper calisthenics skill",
-        description: "Outdoor first choice. Pull-ups, dips, HSPU progressions, muscle-up skill, and trunk work. Shorten it if the shoulders are cooked from surf.",
-        category: "skill",
-        flexible: true
-      },
-      {
-        date: wednesday,
-        startTime: "13:45",
-        endTime: "14:45",
-        summary: "5k sharpener / swim fallback",
-        description: "One quality run keeps the run engine alive. If the surf is excellent or the legs are flat, swap to an easy swim reset instead.",
-        category: "run",
-        flexible: true
-      },
-      {
-        date: thursday,
-        startTime: "13:45",
-        endTime: "15:00",
-        summary: "Upper pull + shoulder support",
-        description: "Keep rows, shoulder strength, and paddling support present without turning the session into a drain.",
-        category: "strength",
-        flexible: true
-      },
-      {
-        date: friday,
-        startTime: "13:30",
-        endTime: "14:45",
-        summary: "Groceries + recovery reset",
-        description: "Treat groceries as training support. If surf is good, surf first and keep the rest of the day low-cost.",
-        category: "life",
-        flexible: true
-      },
-      {
-        date: saturday,
-        startTime: "17:00",
-        endTime: "20:00",
-        summary: "Open social / outside buffer",
-        description: "Keep this loose for friends, Spanish, outside time, or a second surf if the day is too good to pass up.",
-        category: "open",
-        flexible: true
-      },
-      {
-        date: sunday,
-        startTime: "14:00",
-        endTime: "16:00",
-        summary: "Meal prep + week reset",
-        description: "Meal prep is a real performance habit. Add an easy swim or surf only if it gives energy back.",
-        category: "life",
-        flexible: false
-      }
-    ];
+    const datesByDayIndex = {
+      0: monday,
+      1: tuesday,
+      2: wednesday,
+      3: thursday,
+      4: friday,
+      5: saturday,
+      6: sunday
+    };
+
+    const middayTemplates = blueprint.map((entry) => ({
+      date: datesByDayIndex[entry.dayIndex],
+      startTime: entry.calendar?.startTime || "13:45",
+      endTime: entry.calendar?.endTime || "15:00",
+      summary: entry.calendar?.summary || entry.sessionTitle,
+      description: entry.calendar?.description || entry.details,
+      category: entry.calendar?.category || entry.kind,
+      flexible: entry.calendar?.flexible ?? true
+    }));
 
     middayTemplates.forEach((item) => {
       events.push(buildGoogleCalendarEvent({
@@ -5609,14 +6320,19 @@ function buildSurfFirstCoachGuidance({
     return [];
   }
 
+  const profile = buildTrainingHistoryProfile();
+  const strategy = buildSurfFirstPlanStrategy(profile);
   const cards = [];
   const surfSessions = lastSeven.filter((workout) => workout.kind === "surf").length;
   const runSessions = lastSeven.filter((workout) => workout.kind === "run");
   const qualityRuns = runSessions.filter((workout) => isQualityRunSession(workout)).length;
   const easyRuns = Math.max(0, runSessions.length - qualityRuns);
+  const lowerStrengthTouches = lastSeven.filter((workout) => workoutTargetsLowerStrength(workout)).length;
+  const upperStrengthTouches = lastSeven.filter((workout) => workoutTargetsUpperStrength(workout)).length;
   const hardSessions = lastSeven.filter((workout) => (workout.intensity || 0) >= 4).length;
   const today = weekdayDefinitionForDate(todayISO());
   const shouldersCooked = fatiguedAreas.has("shoulders") || fatiguedAreas.has("back");
+  const legsCooked = fatiguedAreas.has("legs") || fatiguedAreas.has("glutes");
   const lowEnergyDay = readiness.label === "Recover" || sleep < 6.5 || energy <= 2 || soreness >= 4;
 
   cards.push({
@@ -5628,6 +6344,26 @@ function buildSurfFirstCoachGuidance({
       : "If the waves are worth it, surf and move the land session rather than forcing both."
   });
 
+  if (strategy.useLowerSupportReset && lowerStrengthTouches < strategy.lowerSessions) {
+    cards.push({
+      emphasis: "strength",
+      title: "Your lower strength wants two touches",
+      summary: `The history-backed version of this plan uses one squat / quad lower day plus one posterior-chain lower day so ${profile.preferredExercises.lowerSquat.toLowerCase()} and ${profile.preferredExercises.lowerPosteriorMain.toLowerCase()} do not drift.`,
+      nextBestOption: legsCooked
+        ? "If the legs are cooked, skip the full lower day and use the short support version later in the week instead of forcing another hard leg session."
+        : `Use the short lower B session: ${profile.preferredExercises.lowerPosteriorMain}, ${profile.preferredExercises.lowerPosteriorSupport.toLowerCase()}, and one unilateral or hamstring accessory, then leave.`
+    });
+  }
+
+  if (!shouldersCooked && upperStrengthTouches < strategy.upperSessions) {
+    cards.push({
+      emphasis: "strength",
+      title: "Keep the second upper touch alive",
+      summary: "This base keeps two upper sessions because your week works better with one cali touch and one mixed gym upper touch, not by doubling the same pattern twice.",
+      nextBestOption: `Use the shortest useful gym upper today: ${profile.preferredExercises.upperGymPull}, ${profile.preferredExercises.upperRow.toLowerCase()}, and one press or shoulder-support movement.`
+    });
+  }
+
   if (shouldersCooked || surfSessions >= 4) {
     cards.push({
       emphasis: "recovery",
@@ -5637,14 +6373,18 @@ function buildSurfFirstCoachGuidance({
     });
   }
 
-  if (qualityRuns < 2) {
+  if (qualityRuns < strategy.qualityRuns) {
     cards.push({
       emphasis: "endurance",
-      title: "Run shape lives on two quality touches",
-      summary: "To hold your 5 km sharpness and half-marathon feel, protect one speed session and one tempo or threshold run each week. Easy volume is optional.",
+      title: strategy.qualityRuns > 1 ? "Run shape still wants two sharp touches" : "Protect the one run touch that matters",
+      summary: strategy.qualityRuns > 1
+        ? "Your recent pattern can still support two sharper run touches on flatter or lower-value surf weeks. Easy volume stays optional."
+        : "One quality run is the minimum anchor for the engine in this base. Protect it before adding random extra gym work.",
       nextBestOption: qualityRuns === 0
         ? "If the surf is flat or average, schedule intervals or a tempo run before adding another gym session."
-        : "You already have one quality run. Keep the second touch sharp and let the easy run stay optional."
+        : (strategy.qualityRuns > 1
+          ? "You already have one quality run. Keep the second touch sharp and let the easy run stay optional."
+          : "You already have the anchor run. Keep everything else light enough that the sharp work still lands well.")
     });
   } else if (lowEnergyDay && easyRuns > 0) {
     cards.push({
@@ -5814,7 +6554,7 @@ function renderPlannedSessionCard(session) {
   const kindValue = plannedSessionKindValue(session);
   const kind = sessionKinds[kindValue] || sessionKinds.recovery;
   const details = plannedSessionDetails(session);
-  const buttonLabel = plannedSessionExercises(session).length ? "Track session" : "Log session";
+  const buttonLabel = plannedSessionExercises(session).length ? "Start session" : "Start log";
 
   return `
     <div class="list-card">
@@ -5830,6 +6570,29 @@ function renderPlannedSessionCard(session) {
       </div>
       <div class="quick-actions tight card-actions">
         <button class="button button-primary compact" type="button" data-log-planned-session="${session.id}">${buttonLabel}</button>
+      </div>
+    </div>
+  `;
+}
+
+function buildLogPlannerManualChoiceMarkup(entries = [], recommendedSessionId = null) {
+  if (!entries.length) {
+    return "";
+  }
+
+  return `
+    <div>
+      <div class="helper-text">Choose any planned session and start it now. The weekday is guidance, not a lock.</div>
+      <div class="quick-actions tight" style="margin-top:0.75rem">
+        ${entries.map((entry) => `
+          <button
+            class="button ${entry.session.id === recommendedSessionId ? "button-primary" : "button-secondary"} compact"
+            type="button"
+            data-log-planned-session="${entry.session.id}"
+          >
+            ${escapeHtml(`${entry.dayDisplay} • ${plannedSessionTitle(entry.session)}`)}
+          </button>
+        `).join("")}
       </div>
     </div>
   `;
@@ -5879,6 +6642,7 @@ function renderLogPlanner() {
           ${escapeHtml(view.summaryActionLabel)}
         </button>
       ` : ""}
+      ${buildLogPlannerManualChoiceMarkup(view.entries, view.summaryAction?.session.id || null)}
     </article>
 
     <div class="log-planner-rail" data-log-schedule-rail>
@@ -5984,7 +6748,7 @@ function buildLogPlannerView() {
   const primaryTodayEntry = todayEntries.find((entry) => !entry.isCompleteToday) || todayEntries[0] || null;
   const nextEntry = findNextPlannedEntry(entries, today.index);
   const summaryAction = primaryTodayEntry || nextEntry || entries[0] || null;
-  const summaryActionLabel = todayEntries.length ? "Open today's workout" : "Open next workout";
+  const summaryActionLabel = "Start suggested workout";
   const summaryTitle = todayEntries.length
     ? (todayEntries.length === 1 ? plannedSessionTitle(primaryTodayEntry.session) : `${todayEntries.length} workouts planned today`)
     : `No workout planned for ${today.long}`;
@@ -6015,13 +6779,13 @@ function buildLogPlannerTodaySummary(todayEntries, primaryEntry) {
   }
 
   if (todayEntries.length > 1) {
-    return `${todayEntries.length} sessions are lined up today. Swipe across the week and tap the one you want to log first.`;
+    return `${todayEntries.length} sessions are lined up today. Start the one you want first, or pick another session from the week if that fits better.`;
   }
 
   const details = primaryEntry.details.exerciseSummary || primaryEntry.details.note || primaryEntry.details.fallback || primaryEntry.kind.description;
   return primaryEntry.isCompleteToday
-    ? `${details} Logged already today, but you can reopen it or compare it with the rest of the week.`
-    : `${details} Loaded from your active block so you can jump straight into tracking.`;
+    ? `${details} Logged already today, but you can reopen it, repeat it, or start another planned session instead.`
+    : `${details} Loaded from your active block, but you can still choose a different planned session if that fits better today.`;
 }
 
 function buildLogPlannerOffDaySummary(nextEntry, todayLabel) {
@@ -6030,7 +6794,7 @@ function buildLogPlannerOffDaySummary(nextEntry, todayLabel) {
   }
 
   const nextLabel = nextEntry.session.dayLabel || nextEntry.dayDisplay;
-  return `Nothing is scheduled for ${todayLabel}. Next up is ${nextLabel} with ${plannedSessionTitle(nextEntry.session)}.`;
+  return `Nothing is scheduled for ${todayLabel}. ${nextLabel} is next with ${plannedSessionTitle(nextEntry.session)}, but you can start any session from this week if that fits better.`;
 }
 
 function findNextPlannedEntry(entries, todayIndex) {
@@ -6116,27 +6880,41 @@ function normalizeExerciseSetLog(values = {}, { fallbackReps = "", rowType = "ma
     weightMode: values.weightMode || "same",
     weightValue: normalizeSelectNumber(values.weightValue),
     weight: normalizeSelectNumber(values.weight),
-    reps: normalizeSelectNumber(values.reps)
+    reps: normalizeSelectNumber(values.reps),
+    setSeconds: normalizeSelectNumber(values.setSeconds),
+    restSeconds: normalizeSelectNumber(values.restSeconds)
   };
 }
 
-function buildDefaultExerciseSetDrafts(targetSets, defaultWeight = null, fallbackReps = "") {
+function buildDefaultExerciseSetDrafts(targetSets, defaultWeight = null, fallbackReps = "", defaultSetSeconds = null, defaultRestSeconds = null) {
   const normalizedDefaultWeight = normalizeSelectNumber(defaultWeight);
+  const normalizedSetSeconds = normalizeSelectNumber(defaultSetSeconds);
+  const normalizedRestSeconds = normalizeSelectNumber(defaultRestSeconds);
   return Array.from({ length: Math.max(1, toNumber(targetSets) || 1) }, (_, index) => normalizeExerciseSetLog({
     id: uid(),
     rowType: "main",
     setIndex: index + 1,
     weightMode: "same",
     weight: normalizedDefaultWeight,
-    reps: null
+    reps: null,
+    setSeconds: normalizedSetSeconds,
+    restSeconds: normalizedRestSeconds
   }, { fallbackReps }));
 }
 
-function buildExerciseSetDraftsFromTemplate(exercise = {}, { defaultWeight = null } = {}) {
+function buildExerciseSetDraftsFromTemplate(exercise = {}, { defaultWeight = null, defaultSetSeconds = null, defaultRestSeconds = null } = {}) {
+  const resolvedSetSeconds = normalizeSelectNumber(defaultSetSeconds)
+    ?? normalizeSelectNumber(exercise.targetSetSeconds)
+    ?? inferSetSecondsFromExercise(exercise);
+  const resolvedRestSeconds = normalizeSelectNumber(defaultRestSeconds)
+    ?? normalizeSelectNumber(exercise.targetRestSeconds)
+    ?? 0;
   const mainRows = buildDefaultExerciseSetDrafts(
     exercise.targetSets,
     defaultWeight,
-    exercise.targetReps || String(exercise.targetLogReps || "")
+    exercise.targetReps || String(exercise.targetLogReps || ""),
+    resolvedSetSeconds,
+    resolvedRestSeconds
   );
   if (!exercise.afterSetTemplates?.length && !exercise.extraSetTemplates?.length) {
     return mainRows;
@@ -6154,7 +6932,9 @@ function buildExerciseSetDraftsFromTemplate(exercise = {}, { defaultWeight = nul
         weightMode: template.weightMode,
         weightValue: template.weightValue,
         weight: resolveSetTemplateAutoWeight(template, defaultWeight),
-        reps: null
+        reps: null,
+        setSeconds: resolvedSetSeconds,
+        restSeconds: resolvedRestSeconds
       }, { rowType: "after-each" }));
     });
   });
@@ -6166,7 +6946,9 @@ function buildExerciseSetDraftsFromTemplate(exercise = {}, { defaultWeight = nul
       weightMode: template.weightMode,
       weightValue: template.weightValue,
       weight: resolveSetTemplateAutoWeight(template, defaultWeight),
-      reps: null
+      reps: null,
+      setSeconds: resolvedSetSeconds,
+      restSeconds: resolvedRestSeconds
     }, { rowType: "extra" }));
   });
 
@@ -6186,7 +6968,9 @@ function getExerciseSetLogs(entry, { fallbackReps = "" } = {}) {
       setIndex: 1,
       weightMode: "same",
       weight: entry.keyWeight ?? null,
-      reps: entry.reps ?? null
+      reps: entry.reps ?? null,
+      setSeconds: entry.setSeconds ?? null,
+      restSeconds: entry.restSeconds ?? null
     }, { fallbackReps })];
   }
 
@@ -6209,8 +6993,15 @@ function summarizeExerciseSetLogs(setLogs = []) {
   };
 }
 
-function buildExerciseSetRowsMarkup(setLogs = [], targetReps = "", defaultWeight = null) {
+function buildResolvedExerciseSetRows(setLogs = [], {
+  targetReps = "",
+  defaultWeight = null,
+  defaultSetSeconds = null,
+  defaultRestSeconds = null
+} = {}) {
   const normalizedDefaultWeight = normalizeSelectNumber(defaultWeight);
+  const normalizedDefaultSetSeconds = normalizeSelectNumber(defaultSetSeconds);
+  const normalizedDefaultRestSeconds = normalizeSelectNumber(defaultRestSeconds);
   const rows = setLogs.length
     ? setLogs.map((setLog) => {
       const normalizedSetLog = normalizeExerciseSetLog(setLog, {
@@ -6240,18 +7031,142 @@ function buildExerciseSetRowsMarkup(setLogs = [], targetReps = "", defaultWeight
     } else {
       followupCount = 0;
     }
-    const showFollowupButton = setLog.rowType === "main";
+    const placeholderReps = setLog.placeholderReps || (setLog.rowType === "main" ? targetReps : "");
+
+    return {
+      ...setLog,
+      label,
+      meta,
+      placeholderReps,
+      showFollowupButton: setLog.rowType === "main",
+      setSeconds: normalizeSelectNumber(setLog.setSeconds) ?? normalizedDefaultSetSeconds,
+      restSeconds: normalizeSelectNumber(setLog.restSeconds) ?? normalizedDefaultRestSeconds
+    };
+  });
+}
+
+function buildExercisePhaseSequence(exercise = {}, {
+  targetReps = "",
+  defaultWeight = null,
+  defaultSetSeconds = null,
+  defaultRestSeconds = null
+} = {}) {
+  const safeExercise = exercise || {};
+  const fallbackTargetReps = targetReps || safeExercise.targetReps || String(safeExercise.targetLogReps || "");
+  const baseRows = Array.isArray(safeExercise.setLogs) && safeExercise.setLogs.length
+    ? safeExercise.setLogs
+    : buildExerciseSetDraftsFromTemplate(safeExercise, {
+      defaultWeight,
+      defaultSetSeconds,
+      defaultRestSeconds
+    });
+  const rows = buildResolvedExerciseSetRows(baseRows, {
+    targetReps: fallbackTargetReps,
+    defaultWeight,
+    defaultSetSeconds,
+    defaultRestSeconds
+  });
+  const phases = [];
+  let totalWorkSeconds = 0;
+  let totalRestSeconds = 0;
+  let cursor = 0;
+
+  rows.forEach((row, rowIndex) => {
+    const setSeconds = Math.max(0, normalizeSelectNumber(row.setSeconds) ?? 0);
+    const restSeconds = Math.max(0, normalizeSelectNumber(row.restSeconds) ?? 0);
+
+    if (setSeconds > 0) {
+      phases.push({
+        type: "work",
+        rowIndex,
+        rowId: row.id || `${rowIndex}`,
+        label: row.label,
+        meta: row.meta,
+        title: row.meta ? `${row.label} • ${row.meta}` : row.label,
+        durationSeconds: setSeconds,
+        startOffsetSeconds: cursor,
+        endOffsetSeconds: cursor + setSeconds
+      });
+      cursor += setSeconds;
+      totalWorkSeconds += setSeconds;
+    }
+
+    if (restSeconds > 0) {
+      phases.push({
+        type: "break",
+        rowIndex,
+        rowId: row.id || `${rowIndex}`,
+        label: row.label,
+        meta: row.meta,
+        title: `Break after ${row.label}`,
+        durationSeconds: restSeconds,
+        startOffsetSeconds: cursor,
+        endOffsetSeconds: cursor + restSeconds
+      });
+      cursor += restSeconds;
+      totalRestSeconds += restSeconds;
+    }
+  });
+
+  return {
+    rows,
+    phases,
+    totalWorkSeconds,
+    totalRestSeconds,
+    totalDurationSeconds: cursor
+  };
+}
+
+function calculateElapsedPhaseTypeSeconds(sequence = {}, elapsedSeconds = 0, phaseType = "break") {
+  const safeElapsedSeconds = Math.max(0, elapsedSeconds || 0);
+  const phases = Array.isArray(sequence?.phases) ? sequence.phases : [];
+  if (!phases.length) {
+    return 0;
+  }
+
+  let total = 0;
+  phases.forEach((phase) => {
+    if (phase.type !== phaseType) {
+      return;
+    }
+
+    total += clamp(
+      safeElapsedSeconds - phase.startOffsetSeconds,
+      0,
+      phase.durationSeconds
+    );
+  });
+
+  if (safeElapsedSeconds > (sequence.totalDurationSeconds || 0)) {
+    const lastPhase = phases[phases.length - 1];
+    if (lastPhase?.type === phaseType) {
+      total += safeElapsedSeconds - (sequence.totalDurationSeconds || 0);
+    }
+  }
+
+  return total;
+}
+
+function buildExerciseSetRowsMarkup(setLogs = [], targetReps = "", defaultWeight = null, defaultSetSeconds = null, defaultRestSeconds = null) {
+  const rows = buildResolvedExerciseSetRows(setLogs, {
+    targetReps,
+    defaultWeight,
+    defaultSetSeconds,
+    defaultRestSeconds
+  });
+
+  return rows.map((setLog) => {
     const placeholderReps = setLog.placeholderReps || (setLog.rowType === "main" ? targetReps : "");
 
     return `
-    <article class="exercise-set-row ${setLog.rowType === "after-each" ? "is-followup" : ""} ${setLog.rowType === "extra" ? "is-extra" : ""}" data-set-row data-set-id="${escapeAttribute(setLog.id || "")}" data-row-type="${escapeAttribute(setLog.rowType || "main")}" data-set-index="${escapeAttribute(setLog.setIndex ?? "")}" data-parent-set-index="${escapeAttribute(setLog.parentSetIndex ?? "")}" data-template-label="${escapeAttribute(setLog.templateLabel || "")}" data-placeholder-reps="${escapeAttribute(placeholderReps)}" data-weight-mode="${escapeAttribute(setLog.weightMode || "same")}" data-weight-value="${escapeAttribute(setLog.weightValue ?? "")}">
+    <article class="exercise-set-row ${setLog.rowType === "after-each" ? "is-followup" : ""} ${setLog.rowType === "extra" ? "is-extra" : ""}" data-set-row data-set-id="${escapeAttribute(setLog.id || "")}" data-row-type="${escapeAttribute(setLog.rowType || "main")}" data-set-index="${escapeAttribute(setLog.setIndex ?? "")}" data-parent-set-index="${escapeAttribute(setLog.parentSetIndex ?? "")}" data-template-label="${escapeAttribute(setLog.templateLabel || "")}" data-placeholder-reps="${escapeAttribute(placeholderReps)}" data-weight-mode="${escapeAttribute(setLog.weightMode || "same")}" data-weight-value="${escapeAttribute(setLog.weightValue ?? "")}" data-default-set-seconds="${escapeAttribute(setLog.setSeconds ?? "")}" data-default-rest-seconds="${escapeAttribute(setLog.restSeconds ?? "")}">
       <div class="exercise-set-top">
         <div>
-          <div class="exercise-set-label">${escapeHtml(label)}</div>
-          ${meta ? `<div class="exercise-set-meta">${escapeHtml(meta)}</div>` : ""}
+          <div class="exercise-set-label">${escapeHtml(setLog.label)}</div>
+          ${setLog.meta ? `<div class="exercise-set-meta">${escapeHtml(setLog.meta)}</div>` : ""}
         </div>
         <div class="exercise-set-actions">
-          ${showFollowupButton ? `<button class="button button-secondary compact" type="button" data-add-followup-set>Superset</button>` : ""}
+          ${setLog.showFollowupButton ? `<button class="button button-secondary compact" type="button" data-add-followup-set>Superset</button>` : ""}
           <button class="button button-secondary compact" type="button" data-remove-set>Remove</button>
         </div>
       </div>
@@ -6264,6 +7179,23 @@ function buildExerciseSetRowsMarkup(setLogs = [], targetReps = "", defaultWeight
         <label class="field">
           <span>Set reps</span>
           <input type="number" inputmode="numeric" step="1" data-set-reps value="${setLog.reps ?? ""}" placeholder="${escapeAttribute(placeholderReps)}">
+        </label>
+      </div>
+      <div class="field-grid two-up">
+        <label class="field">
+          <span>Set time</span>
+          <select data-set-log-seconds>
+            <option value="">Choose</option>
+            ${buildExerciseSetTimeOptionsMarkup(setLog.setSeconds)}
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Break after</span>
+          <select data-set-log-rest-seconds>
+            <option value="">Choose</option>
+            ${buildExerciseRestOptionsMarkup(setLog.restSeconds)}
+          </select>
         </label>
       </div>
     </article>
@@ -6516,6 +7448,54 @@ function syncSetWeightInputs(container, {
   });
 }
 
+function syncSetTimingInputs(container, {
+  nextSetSeconds = null,
+  nextRestSeconds = null
+} = {}) {
+  if (!container) {
+    return;
+  }
+
+  const normalizedNextSetSeconds = normalizeSelectNumber(nextSetSeconds);
+  const normalizedNextRestSeconds = normalizeSelectNumber(nextRestSeconds);
+
+  [...container.querySelectorAll("[data-set-row]")].forEach((row) => {
+    const setField = row.querySelector("[data-set-log-seconds]");
+    const restField = row.querySelector("[data-set-log-rest-seconds]");
+    const currentSetSeconds = normalizeSelectNumber(setField?.value);
+    const currentRestSeconds = normalizeSelectNumber(restField?.value);
+    const defaultSetSeconds = normalizeSelectNumber(row.dataset.defaultSetSeconds);
+    const defaultRestSeconds = normalizeSelectNumber(row.dataset.defaultRestSeconds);
+    const nextRowSetSeconds = currentSetSeconds == null
+      || (defaultSetSeconds != null && currentSetSeconds != null && Math.abs(currentSetSeconds - defaultSetSeconds) < 0.001)
+      ? normalizedNextSetSeconds
+      : currentSetSeconds;
+    const nextRowRestSeconds = currentRestSeconds == null
+      || (defaultRestSeconds != null && currentRestSeconds != null && Math.abs(currentRestSeconds - defaultRestSeconds) < 0.001)
+      ? normalizedNextRestSeconds
+      : currentRestSeconds;
+
+    row.dataset.defaultSetSeconds = normalizedNextSetSeconds != null ? String(normalizedNextSetSeconds) : "";
+    row.dataset.defaultRestSeconds = normalizedNextRestSeconds != null ? String(normalizedNextRestSeconds) : "";
+
+    if (setField) {
+      setField.innerHTML = `
+        <option value="">Choose</option>
+        ${buildExerciseSetTimeOptionsMarkup(nextRowSetSeconds)}
+      `;
+      setField.value = nextRowSetSeconds != null ? String(nextRowSetSeconds) : "";
+    }
+
+    if (restField) {
+      restField.innerHTML = `
+        <option value="">Choose</option>
+        ${buildExerciseRestOptionsMarkup(nextRowRestSeconds)}
+      `;
+      restField.value = nextRowRestSeconds != null ? String(nextRowRestSeconds) : "";
+    }
+  });
+}
+
 function currentExerciseCardSetWeight(card) {
   if (!card) {
     return "";
@@ -6533,6 +7513,14 @@ function currentExerciseCardSetSeconds(card) {
   return field?.value || field?.dataset.autoSetSeconds || "";
 }
 
+function currentExerciseCardRestSeconds(card) {
+  if (!card) {
+    return "";
+  }
+
+  return card.querySelector("[data-rest-seconds]")?.value || "";
+}
+
 function exerciseWorkUnitCount(exercise = {}) {
   if (Array.isArray(exercise?.setLogs) && exercise.setLogs.length) {
     return exercise.setLogs.length;
@@ -6546,12 +7534,12 @@ function exerciseWorkUnitCount(exercise = {}) {
 }
 
 function plannedExerciseWorkSeconds(exercise = {}, setSeconds = null) {
-  const normalizedSetSeconds = normalizeSelectNumber(setSeconds) ?? exercise?.targetSetSeconds ?? inferSetSecondsFromExercise(exercise);
-  if (normalizedSetSeconds == null) {
-    return 0;
-  }
-
-  return exerciseWorkUnitCount(exercise) * normalizedSetSeconds;
+  return buildExercisePhaseSequence(exercise, {
+    targetReps: exercise?.targetReps || String(exercise?.targetLogReps || ""),
+    defaultWeight: exercise?.targetWeight,
+    defaultSetSeconds: setSeconds,
+    defaultRestSeconds: exercise?.targetRestSeconds
+  }).totalWorkSeconds;
 }
 
 function collectRoutineTimingBudget() {
@@ -6570,12 +7558,20 @@ function collectRoutineTimingBudget() {
     const restSeconds = normalizeSelectNumber(card?.querySelector("[data-rest-seconds]")?.value)
       ?? exercise.targetRestSeconds
       ?? 0;
-
-    budget.workSeconds += plannedExerciseWorkSeconds({
+    const setLogs = collectExerciseSetLogsFromContainer(card?.querySelector("[data-set-list]"), { includeUntouched: true });
+    const phaseSequence = buildExercisePhaseSequence({
       ...exercise,
-      targetLogReps: repsValue
-    }, setSeconds);
-    budget.restSeconds += Math.max(0, restSeconds || 0);
+      targetLogReps: repsValue,
+      setLogs
+    }, {
+      targetReps: exercise.targetReps,
+      defaultWeight: normalizeSelectNumber(currentExerciseCardSetWeight(card)) ?? exercise.targetWeight,
+      defaultSetSeconds: setSeconds,
+      defaultRestSeconds: restSeconds
+    });
+
+    budget.workSeconds += phaseSequence.totalWorkSeconds;
+    budget.restSeconds += phaseSequence.totalRestSeconds;
     return budget;
   }, { workSeconds: 0, restSeconds: 0 });
 
@@ -6793,7 +7789,12 @@ function setBuilderPanelOpen(row, panelName, isOpen) {
   button.classList.toggle("is-open", isOpen);
 }
 
-function appendExerciseSetRow(container, { targetReps = "", defaultWeight = null } = {}) {
+function appendExerciseSetRow(container, {
+  targetReps = "",
+  defaultWeight = null,
+  defaultSetSeconds = null,
+  defaultRestSeconds = null
+} = {}) {
   if (!container) {
     return;
   }
@@ -6803,10 +7804,12 @@ function appendExerciseSetRow(container, { targetReps = "", defaultWeight = null
     rowType: "extra",
     weightMode: "same",
     weight: normalizeSelectNumber(defaultWeight),
-    reps: null
+    reps: null,
+    setSeconds: normalizeSelectNumber(defaultSetSeconds),
+    restSeconds: normalizeSelectNumber(defaultRestSeconds)
   }, {
     rowType: "extra"
-  })], targetReps, defaultWeight));
+  })], targetReps, defaultWeight, defaultSetSeconds, defaultRestSeconds));
   renumberExerciseSetRows(container);
 }
 
@@ -6858,7 +7861,11 @@ function renumberExerciseSetRows(container) {
   });
 }
 
-function appendExerciseFollowupRow(row, { defaultWeight = null } = {}) {
+function appendExerciseFollowupRow(row, {
+  defaultWeight = null,
+  defaultSetSeconds = null,
+  defaultRestSeconds = null
+} = {}) {
   const container = row?.closest("[data-set-list]");
   if (!row || !container) {
     return;
@@ -6885,10 +7892,12 @@ function appendExerciseFollowupRow(row, { defaultWeight = null } = {}) {
     templateLabel: "Follow-up",
     weightMode: "same",
     weight: normalizeSelectNumber(defaultWeight),
-    reps: null
+    reps: null,
+    setSeconds: normalizeSelectNumber(defaultSetSeconds),
+    restSeconds: normalizeSelectNumber(defaultRestSeconds)
   }, {
     rowType: "after-each"
-  })], "", defaultWeight));
+  })], "", defaultWeight, defaultSetSeconds, defaultRestSeconds));
   renumberExerciseSetRows(container);
 }
 
@@ -8010,11 +9019,11 @@ function activeBlockSuggestion() {
 
   const todayEntry = view.todayEntries.find((entry) => !entry.isCompleteToday) || view.todayEntries[0] || null;
   if (todayEntry) {
-    return `Stay inside the block: ${todayEntry.dayDisplay} is set for ${plannedSessionTitle(todayEntry.session)}.`;
+    return `The block points to ${todayEntry.dayDisplay} for ${plannedSessionTitle(todayEntry.session)}, but you can still open a different session if today needs another fit.`;
   }
 
   const nextEntry = findNextPlannedEntry(view.entries, weekdayDefinitionForDate(todayISO()).index);
-  return nextEntry ? `Stay inside the block: ${nextEntry.dayDisplay} is next for ${plannedSessionTitle(nextEntry.session)}.` : "";
+  return nextEntry ? `${nextEntry.dayDisplay} is next for ${plannedSessionTitle(nextEntry.session)}, but the week stays flexible if you want another session instead.` : "";
 }
 
 function areaLabels(keys = []) {

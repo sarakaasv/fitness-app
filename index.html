@@ -231,6 +231,7 @@
 
           <div class="quick-actions tight">
             <button class="button button-primary" type="button" id="start-guided-workout">Start workout flow</button>
+            <button class="button button-secondary" type="button" id="add-routine-exercise">Add exercise</button>
           </div>
 
           <div class="exercise-stack" id="routine-exercise-fields"></div>
@@ -328,7 +329,7 @@
           </div>
 
           <p class="helper-text">
-            This base plan assumes surf is the first priority, work capacity has to stay high, social energy matters, and gym work should maintain strength without stealing freshness.
+            This base plan keeps surf and life first, but it should also read your logged training patterns so the suggested week reflects the lifts and frequencies that actually work for you.
           </p>
 
           <div class="coach-plan-summary" id="surf-plan-summary"></div>
@@ -716,7 +717,7 @@
         <div class="guided-stage-bottomline">
           <span class="small-tag" id="guided-exercise-kind">Lift</span>
           <div class="guided-stage-action-buttons">
-            <button class="guided-skip-button hidden" type="button" id="guided-skip-break">Skip break</button>
+            <button class="guided-skip-button hidden" type="button" id="guided-skip-break">Skip timer</button>
             <button class="guided-scroll-button" type="button" id="guided-open-tracking">Scroll for tracking</button>
           </div>
         </div>
@@ -751,6 +752,14 @@
             <button class="button button-secondary compact" type="button" id="guided-add-set">Add extra set</button>
             </div>
           </div>
+
+        <div class="button-row">
+          <button class="button button-secondary hidden" type="button" id="guided-skip-phase">Skip timer</button>
+        </div>
+
+        <div class="button-row">
+          <button class="button button-secondary" type="button" id="guided-add-exercise">Add exercise to workout</button>
+        </div>
 
         <div class="button-row">
           <button class="button button-secondary" type="button" id="guided-prev-exercise">Previous</button>
