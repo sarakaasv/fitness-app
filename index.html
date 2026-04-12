@@ -620,6 +620,65 @@
           <div class="stack-list" id="body-history"></div>
         </section>
       </section>
+
+      <section class="screen" data-screen="chat">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Coach chat</p>
+            <h2>Talk through training with context</h2>
+          </div>
+        </div>
+
+        <section class="panel form-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Goal</p>
+              <h3>What matters most right now?</h3>
+            </div>
+            <button class="button button-secondary compact" type="button" id="coach-chat-clear">Clear chat</button>
+          </div>
+
+          <p class="helper-text">
+            Write the goal you want the coach to bias toward. Then ask about how you feel, what to do today, or how to flex the week without losing the point.
+          </p>
+
+          <label class="field">
+            <span>Current goal</span>
+            <textarea id="coach-chat-goal" rows="3" placeholder="Keep the long run in, hold two lower days, stay strong for surf, and avoid junk volume."></textarea>
+          </label>
+        </section>
+
+        <section class="panel soft-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Context</p>
+              <h3>What the coach is reading</h3>
+            </div>
+          </div>
+          <div class="coach-context-grid" id="coach-chat-summary"></div>
+        </section>
+
+        <section class="panel coach-chat-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Chat</p>
+              <h3>Ask about workouts, fatigue, or the week</h3>
+            </div>
+          </div>
+
+          <div class="coach-chat-suggestions" id="coach-chat-prompts"></div>
+          <div class="coach-chat-thread" id="coach-chat-thread"></div>
+
+          <label class="field">
+            <span>Message</span>
+            <textarea rows="4" id="coach-chat-input" placeholder="Legs feel heavy, shoulders are a bit cooked, and I still want to keep the week useful. What is the smartest move?"></textarea>
+          </label>
+
+          <div class="button-row">
+            <button class="button button-primary" type="button" id="coach-chat-send">Ask coach</button>
+          </div>
+        </section>
+      </section>
     </main>
 
     <nav class="tabbar">
@@ -634,6 +693,10 @@
       <button class="tab-button" type="button" data-screen-target="routines">
         <span class="tab-icon">Plan</span>
         <span class="tab-label">Routines</span>
+      </button>
+      <button class="tab-button" type="button" data-screen-target="chat">
+        <span class="tab-icon">Talk</span>
+        <span class="tab-label">Chat</span>
       </button>
       <button class="tab-button" type="button" data-screen-target="progress">
         <span class="tab-icon">Rise</span>
@@ -746,12 +809,35 @@
           <textarea rows="3" id="guided-note-input" placeholder="Technique, setup, pain, machine, strong, ugly..."></textarea>
         </label>
 
-          <div class="exercise-panel hidden" data-guided-panel-view="details">
-            <div class="exercise-set-list" id="guided-set-list"></div>
-            <div class="mini-actions">
-            <button class="button button-secondary compact" type="button" id="guided-add-set">Add extra set</button>
-            </div>
+        <div class="exercise-panel hidden" data-guided-panel-view="details">
+          <div class="helper-text">Let the timer run and log these set rollers whenever the exercise is done.</div>
+          <div class="exercise-set-list" id="guided-set-list"></div>
+          <div class="mini-actions">
+          <button class="button button-secondary compact" type="button" id="guided-add-set">Add extra set</button>
           </div>
+        </div>
+
+        <section class="guided-chat-card" id="guided-chat-panel">
+          <div class="guided-chat-head">
+            <div>
+              <p class="eyebrow">Workout chat</p>
+              <h3>Talk through the session</h3>
+            </div>
+            <div class="helper-text" id="guided-chat-context">Current exercise context</div>
+          </div>
+
+          <div class="guided-chat-suggestions" id="guided-chat-suggestions"></div>
+          <div class="guided-chat-thread" id="guided-chat-thread"></div>
+
+          <label class="field">
+            <span>How do you feel and what do you want?</span>
+            <textarea rows="3" id="guided-chat-input" placeholder="Shoulders feel cooked. Want the shortest useful version today."></textarea>
+          </label>
+
+          <div class="button-row">
+            <button class="button button-secondary compact" type="button" id="guided-chat-send">Send</button>
+          </div>
+        </section>
 
         <div class="button-row">
           <button class="button button-secondary hidden" type="button" id="guided-skip-phase">Skip timer</button>

@@ -272,6 +272,13 @@ const refs = {
   bodyStress: document.querySelector("#body-stress"),
   bodyNotes: document.querySelector("#body-notes"),
   bodyHistory: document.querySelector("#body-history"),
+  coachChatGoal: document.querySelector("#coach-chat-goal"),
+  coachChatSummary: document.querySelector("#coach-chat-summary"),
+  coachChatPrompts: document.querySelector("#coach-chat-prompts"),
+  coachChatThread: document.querySelector("#coach-chat-thread"),
+  coachChatInput: document.querySelector("#coach-chat-input"),
+  coachChatSend: document.querySelector("#coach-chat-send"),
+  coachChatClear: document.querySelector("#coach-chat-clear"),
   guidedWorkoutPanel: document.querySelector("#guided-workout-panel"),
   guidedOverviewPanel: document.querySelector("#guided-overview-panel"),
   guidedOverviewTitle: document.querySelector("#guided-overview-title"),
@@ -306,6 +313,12 @@ const refs = {
   guidedHistoryPanel: document.querySelector("#guided-history-panel"),
   guidedNoteInput: document.querySelector("#guided-note-input"),
   guidedSetList: document.querySelector("#guided-set-list"),
+  guidedChatPanel: document.querySelector("#guided-chat-panel"),
+  guidedChatContext: document.querySelector("#guided-chat-context"),
+  guidedChatSuggestions: document.querySelector("#guided-chat-suggestions"),
+  guidedChatThread: document.querySelector("#guided-chat-thread"),
+  guidedChatInput: document.querySelector("#guided-chat-input"),
+  guidedChatSend: document.querySelector("#guided-chat-send"),
   guidedAddSet: document.querySelector("#guided-add-set"),
   guidedAddExercise: document.querySelector("#guided-add-exercise"),
   guidedSkipPhase: document.querySelector("#guided-skip-phase"),
@@ -388,6 +401,9 @@ function bootstrap() {
   renderChipGroup(refs.quickAreas, ui.quickAreas, "quick");
   renderChipGroup(refs.routineAreas, ui.routineAreas, "routine");
   renderChipGroup(refs.bodyAreas, ui.bodyAreas, "body");
+  if (state.blocks.some((block) => block.systemKey === SURF_FIRST_BLOCK_KEY) || state.planner?.surfFirstBlockId) {
+    installSurfFirstBasePlan({ silent: true });
+  }
   renderDataViews();
   renderLogMode();
   updateWorkoutEditUI();
@@ -497,7 +513,8 @@ function wireEvents() {
           targetReps: card.dataset.targetReps || "",
           defaultWeight: currentExerciseCardSetWeight(card),
           defaultSetSeconds: currentExerciseCardSetSeconds(card),
-          defaultRestSeconds: currentExerciseCardRestSeconds(card)
+          defaultRestSeconds: currentExerciseCardRestSeconds(card),
+          defaultEffortPercent: currentExerciseCardEffortPercent(card)
         });
       }
       return;
@@ -509,7 +526,8 @@ function wireEvents() {
       appendExerciseFollowupRow(row, {
         defaultWeight: currentExerciseCardSetWeight(card),
         defaultSetSeconds: currentExerciseCardSetSeconds(card),
-        defaultRestSeconds: currentExerciseCardRestSeconds(card)
+        defaultRestSeconds: currentExerciseCardRestSeconds(card),
+        defaultEffortPercent: currentExerciseCardEffortPercent(card)
       });
       return;
     }
@@ -525,7 +543,8 @@ function wireEvents() {
             targetReps: card?.dataset.targetReps || "",
             defaultWeight: currentExerciseCardSetWeight(card),
             defaultSetSeconds: currentExerciseCardSetSeconds(card),
-            defaultRestSeconds: currentExerciseCardRestSeconds(card)
+            defaultRestSeconds: currentExerciseCardRestSeconds(card),
+            defaultEffortPercent: currentExerciseCardEffortPercent(card)
           });
         }
         renumberExerciseSetRows(setList);
@@ -826,6 +845,29 @@ function wireEvents() {
     }
   });
 
+  refs.coachChatGoal.addEventListener("input", () => {
+    coachChatState().goal = refs.coachChatGoal.value;
+    persistState();
+    renderCoachChatSummary();
+    renderCoachChatPrompts();
+  });
+  refs.coachChatSend.addEventListener("click", () => submitCoachChatMessage());
+  refs.coachChatInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      submitCoachChatMessage();
+    }
+  });
+  refs.coachChatPrompts.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-coach-chat-prompt]");
+    if (!button) {
+      return;
+    }
+
+    submitCoachChatMessage(button.dataset.coachChatPrompt || "");
+  });
+  refs.coachChatClear.addEventListener("click", clearCoachChatConversation);
+
   refs.routineList.addEventListener("click", (event) => {
     const logButton = event.target.closest("[data-log-routine]");
     const editButton = event.target.closest("[data-edit-routine]");
@@ -868,6 +910,24 @@ function wireEvents() {
   refs.guidedSkipBreak.addEventListener("click", skipGuidedBreakEarly);
   refs.guidedSkipPhase.addEventListener("click", skipGuidedCurrentPhase);
   refs.guidedOpenTracking.addEventListener("click", scrollGuidedTrackingIntoView);
+  refs.guidedChatSend.addEventListener("click", () => submitGuidedWorkoutChat());
+  refs.guidedChatInput.addEventListener("input", () => {
+    ui.guidedWorkout.chatInputValue = refs.guidedChatInput.value;
+  });
+  refs.guidedChatInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      submitGuidedWorkoutChat();
+    }
+  });
+  refs.guidedChatSuggestions.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-guided-chat-prompt]");
+    if (!button) {
+      return;
+    }
+
+    submitGuidedWorkoutChat(button.dataset.guidedChatPrompt || "");
+  });
   refs.guidedWorkoutPanel.addEventListener("click", handleGuidedWorkoutClick);
   refs.guidedWorkoutPanel.addEventListener("change", handleGuidedWorkoutChange);
   refs.guidedWorkoutPanel.addEventListener("input", handleGuidedWorkoutInput);
@@ -950,7 +1010,9 @@ function createGuidedWorkoutState() {
     templateTitle: "",
     templateSourceLabel: "",
     templateKind: "strength",
-    exerciseDrafts: []
+    exerciseDrafts: [],
+    chatMessages: [],
+    chatInputValue: ""
   };
 }
 
@@ -966,6 +1028,13 @@ function createExerciseProgressState() {
     visible: false,
     exerciseName: "",
     equipmentFilter: "all"
+  };
+}
+
+function createCoachChatState() {
+  return {
+    goal: "",
+    messages: []
   };
 }
 
@@ -1275,13 +1344,154 @@ function buildStarterLegDayRoutine(id = uid()) {
   };
 }
 
-function ensureStarterLegDayRoutine(routines = []) {
-  const hasLegDay = routines.some((routine) => {
-    const name = String(routine.name || "").trim().toLowerCase();
-    return routine.systemKey === "starter-leg-day-v1" || name === STARTER_LEG_DAY_NAME.toLowerCase();
+function buildUploadedHistoryStarterRoutines(workouts = []) {
+  const profile = buildTrainingHistoryProfile(workouts);
+  const preferred = profile.preferredExercises;
+  const personalizeFromHistory = (baseExercise, preferredName) => personalizeRoutineExercise(
+    baseExercise,
+    preferredName,
+    { workouts }
+  );
+
+  return [
+    {
+      id: uid(),
+      systemKey: "notebook-quad-focus-v1",
+      name: "Notebook Quad Focus",
+      kind: "strength",
+      sessionKind: "strength",
+      notes: `Built from your quad-focused pages: keep ${preferred.lowerSquat.toLowerCase()}, ${preferred.lowerQuadPress.toLowerCase()}, and one unilateral knee-dominant pattern present, then finish with simple quad and calf support.`,
+      estimatedMinutes: 75,
+      exercises: [
+        personalizeFromHistory({ name: "Hip Thrust", targetSets: 4, targetReps: "8-10", targetLogReps: 10, targetEffortPercent: 82, targetRestSeconds: 105, notes: "Glute primer before the main knee-dominant work." }, preferred.lowerPosteriorSupport),
+        personalizeFromHistory({ name: "Back Squat", targetSets: 3, targetReps: "5-6", targetLogReps: 6, targetEffortPercent: 85, targetRestSeconds: 150, notes: "Main quad anchor. Keep the reps clean." }, preferred.lowerSquat),
+        personalizeFromHistory({ name: "Hack Squat", targetSets: 3, targetReps: "6-8", targetLogReps: 8, targetEffortPercent: 82, targetRestSeconds: 120, notes: "Machine quad volume without another long setup." }, preferred.lowerQuadPress),
+        personalizeFromHistory({ name: "Step-Up", targetSets: 3, targetReps: "6 each", targetLogReps: 6, targetEffortPercent: 80, targetRestSeconds: 90, notes: "Use your preferred unilateral quad pattern here." }, preferred.lowerSingle),
+        personalizeFromHistory({ name: "Leg Extension", targetSets: 2, targetReps: "10-15", targetLogReps: 12, targetEffortPercent: 78, targetRestSeconds: 60, notes: "Straightforward quad finish." }, preferred.lowerQuadAccessory),
+        personalizeFromHistory({ name: "Calf Raise", targetSets: 2, targetReps: "10-12", targetLogReps: 12, targetEffortPercent: 78, targetRestSeconds: 60, notes: "Smooth tempo." }, preferred.lowerCalves)
+      ]
+    },
+    {
+      id: uid(),
+      systemKey: "notebook-glutes-hammies-v1",
+      name: "Notebook Glutes + Hammies",
+      kind: "strength",
+      sessionKind: "strength",
+      notes: `Closer to your glutes-and-hams notebooks: hinge first, glute support second, then one unilateral pattern and simple hamstring work instead of junk volume.`,
+      estimatedMinutes: 70,
+      exercises: [
+        personalizeFromHistory({ name: "Romanian Deadlift", targetSets: 4, targetReps: "6-8", targetLogReps: 6, targetEffortPercent: 82, targetRestSeconds: 120, notes: "Main hinge of the day." }, preferred.lowerPosteriorMain),
+        personalizeFromHistory({ name: "Hip Thrust", targetSets: 3, targetReps: "8-10", targetLogReps: 10, targetEffortPercent: 82, targetRestSeconds: 90, notes: "Glute support, not a second max lift." }, preferred.lowerPosteriorSupport),
+        personalizeFromHistory({ name: "Bulgarian Split Squat", targetSets: 3, targetReps: "6 each", targetLogReps: 6, targetEffortPercent: 82, targetRestSeconds: 90, notes: "Keep the single-leg pattern alive." }, preferred.lowerSingle),
+        personalizeFromHistory({ name: "Back Squat", targetSets: 2, targetReps: "5-6", targetLogReps: 5, targetEffortPercent: 80, targetRestSeconds: 120, notes: "Optional second compound if you still feel crisp." }, preferred.lowerSquat),
+        personalizeFromHistory({ name: "Hamstring Curl", targetSets: 2, targetReps: "10-12", targetLogReps: 10, targetEffortPercent: 78, targetRestSeconds: 60, notes: "Easy hamstring volume." }, preferred.lowerHamAccessory),
+        personalizeFromHistory({ name: "Back Extension", targetSets: 2, targetReps: "10-12", targetLogReps: 10, targetEffortPercent: 75, targetRestSeconds: 60, notes: "Lower-back and glute support." }, preferred.lowerPosteriorSupport)
+      ]
+    },
+    {
+      id: uid(),
+      systemKey: "notebook-cali-pull-dips-v1",
+      name: "Notebook Cali Pull + Dips",
+      kind: "mixed",
+      sessionKind: "functional",
+      notes: `Matches the cali-heavy upper pages better than a pure bodybuilding split: ${preferred.upperPullMain.toLowerCase()}, ${preferred.upperDip.toLowerCase()}, a row, trunk work, and a little skill if the shoulders feel good. Bare tag en masse reps, keep volume over pauser, and make it faster and more useful for what you actually need.`,
+      estimatedMinutes: 55,
+      exercises: [
+        personalizeFromHistory({ name: "Pull-Up", targetSets: 5, targetReps: "3-6", targetLogReps: 5, targetEffortPercent: 85, targetRestSeconds: 120, notes: "Strict reps first." }, preferred.upperPullMain),
+        personalizeFromHistory({ name: "Dips", targetSets: 3, targetReps: "6-10", targetLogReps: 8, targetEffortPercent: 85, targetRestSeconds: 105, notes: "Weighted only if the shoulders feel good." }, preferred.upperDip),
+        personalizeFromHistory({ name: "Row", targetSets: 3, targetReps: "6-10", targetLogReps: 8, targetEffortPercent: 80, targetRestSeconds: 90, notes: "Simple row anchor." }, preferred.upperRow),
+        personalizeFromHistory({ name: "Shoulder Press", targetSets: 2, targetReps: "6-8", targetLogReps: 6, targetEffortPercent: 78, targetRestSeconds: 90, notes: "Support, not ego pressing." }, preferred.upperVerticalPress),
+        personalizeFromHistory({ name: "Weighted Plank", targetSets: 3, targetReps: "40-60 s", targetSetSeconds: 45, targetRestSeconds: 75, notes: "Trunk tension and shoulder position." }, preferred.core),
+        personalizeFromHistory({ name: "Dead Hang", targetSets: 2, targetReps: "max quality", targetRestSeconds: 75, notes: "Grip and shoulder decompression." }, preferred.core)
+      ]
+    },
+    {
+      id: uid(),
+      systemKey: "notebook-gym-upper-balance-v1",
+      name: "Notebook Gym Upper Balance",
+      kind: "strength",
+      sessionKind: "strength",
+      notes: `Built from the mixed upper-body pages: one vertical pull, one row, one main press, shoulder support, and a small arm finish if you want it.`,
+      estimatedMinutes: 65,
+      exercises: [
+        personalizeFromHistory({ name: "Lat Pulldown", targetSets: 3, targetReps: "6-8", targetLogReps: 8, targetEffortPercent: 82, targetRestSeconds: 90, notes: "Vertical pull anchor." }, preferred.upperGymPull),
+        personalizeFromHistory({ name: "Row", targetSets: 3, targetReps: "6-8", targetLogReps: 8, targetEffortPercent: 80, targetRestSeconds: 90, notes: "Keep the shoulders balanced." }, preferred.upperRow),
+        personalizeFromHistory({ name: "Bench Press", targetSets: 3, targetReps: "4-6", targetLogReps: 5, targetEffortPercent: 82, targetRestSeconds: 120, notes: "Heavy press anchor." }, preferred.upperPressMain),
+        personalizeFromHistory({ name: "Shoulder Press", targetSets: 2, targetReps: "6-8", targetLogReps: 6, targetEffortPercent: 78, targetRestSeconds: 90, notes: "Controlled path." }, preferred.upperVerticalPress),
+        personalizeFromHistory({ name: "Face Pull", targetSets: 2, targetReps: "10-15", targetLogReps: 12, targetEffortPercent: 72, targetRestSeconds: 60, notes: "Scap and rear-delt support." }, preferred.upperScap),
+        { id: uid(), name: "Curl", targetSets: 2, targetReps: "10-12", targetLogReps: 10, targetEffortPercent: 75, targetRestSeconds: 60, notes: "Optional arm finish." }
+      ]
+    },
+    {
+      id: uid(),
+      systemKey: "ladder-full-body-a-v1",
+      name: "Ladder Full Body A",
+      kind: "strength",
+      sessionKind: "strength",
+      notes: "Inspired by the Ladder notes you kept: one squat, one hip-dominant lift, one pull anchor, and simple trunk / shoulder support.",
+      estimatedMinutes: 60,
+      exercises: [
+        personalizeFromHistory({ name: "Back Squat", targetSets: 3, targetReps: "3-8", targetLogReps: 5, targetEffortPercent: 85, targetRestSeconds: 150, notes: "Use the heavy focus lift here." }, preferred.lowerSquat),
+        personalizeFromHistory({ name: "Hip Thrust", targetSets: 3, targetReps: "8-12", targetLogReps: 10, targetEffortPercent: 82, targetRestSeconds: 90, notes: "Strong but smooth." }, preferred.lowerPosteriorSupport),
+        personalizeFromHistory({ name: "Pull-Up", targetSets: 4, targetReps: "4-6", targetLogReps: 5, targetEffortPercent: 85, targetRestSeconds: 120, notes: "Leave one good rep in reserve." }, preferred.upperPullMain),
+        personalizeFromHistory({ name: "Face Pull", targetSets: 3, targetReps: "10-15", targetLogReps: 12, targetEffortPercent: 72, targetRestSeconds: 60, notes: "Rear-delt / shoulder support." }, preferred.upperScap),
+        personalizeFromHistory({ name: "Leg Raise", targetSets: 3, targetReps: "8-12", targetLogReps: 10, targetEffortPercent: 75, targetRestSeconds: 60, notes: "Simple core finish." }, preferred.core)
+      ]
+    },
+    {
+      id: uid(),
+      systemKey: "ladder-full-body-b-v1",
+      name: "Ladder Full Body B",
+      kind: "strength",
+      sessionKind: "strength",
+      notes: "Second Ladder-style full body day: hinge, bench, row, unilateral legs, and one triceps / dip slot.",
+      estimatedMinutes: 65,
+      exercises: [
+        personalizeFromHistory({ name: "Deadlift", targetSets: 3, targetReps: "3-6", targetLogReps: 4, targetEffortPercent: 85, targetRestSeconds: 150, notes: "Heavy hinge focus." }, preferred.lowerPosteriorMain),
+        personalizeFromHistory({ name: "Bench Press", targetSets: 3, targetReps: "4-6", targetLogReps: 5, targetEffortPercent: 82, targetRestSeconds: 120, notes: "Press anchor." }, preferred.upperPressMain),
+        personalizeFromHistory({ name: "Single-Arm Row", targetSets: 3, targetReps: "8-12", targetLogReps: 10, targetEffortPercent: 80, targetRestSeconds: 75, notes: "Keep it controlled." }, preferred.upperRow),
+        personalizeFromHistory({ name: "Walking Lunge", targetSets: 3, targetReps: "8 each", targetLogReps: 8, targetEffortPercent: 80, targetRestSeconds: 90, notes: "Unilateral leg support." }, preferred.lowerSingle),
+        personalizeFromHistory({ name: "Dips", targetSets: 3, targetReps: "8-12", targetLogReps: 10, targetEffortPercent: 80, targetRestSeconds: 90, notes: "Triceps / chest finish." }, preferred.upperDip)
+      ]
+    },
+    {
+      id: uid(),
+      systemKey: "notebook-5k-quality-v1",
+      name: "Notebook 5k Quality",
+      kind: "conditioning",
+      sessionKind: "run",
+      notes: "Built from your 400 m, 600 m, 1000 m, and threshold notes. Use this for a flatter week where you want one structured run instead of guessing mid-session.",
+      estimatedMinutes: 45,
+      exercises: []
+    },
+    {
+      id: uid(),
+      systemKey: "brain-break-endurance-bike-v1",
+      name: "Brain-Break Endurance Bike",
+      kind: "conditioning",
+      sessionKind: "bike",
+      notes: "Steady endurance ride inspired by your long spin notes: controlled cadence, no standing grind, and a version that works even on tired-brain days.",
+      estimatedMinutes: 75,
+      exercises: []
+    }
+  ];
+}
+
+function buildSystemStarterRoutines(workouts = []) {
+  return [buildStarterLegDayRoutine(), ...buildUploadedHistoryStarterRoutines(workouts)];
+}
+
+function ensureSystemStarterRoutines(routines = [], workouts = []) {
+  const existingKeys = new Set(routines.map((routine) => routine.systemKey).filter(Boolean));
+  const existingNames = new Set(
+    routines.map((routine) => String(routine.name || "").trim().toLowerCase()).filter(Boolean)
+  );
+  const missing = buildSystemStarterRoutines(workouts).filter((routine) => {
+    const normalizedName = String(routine.name || "").trim().toLowerCase();
+    return !existingKeys.has(routine.systemKey) && !existingNames.has(normalizedName);
   });
 
-  return hasLegDay ? routines : [buildStarterLegDayRoutine(), ...routines];
+  return missing.length ? [...missing, ...routines] : routines;
 }
 
 function clearRoutineLogTemplate() {
@@ -1482,28 +1692,33 @@ function collectExerciseSetLogsFromContainer(container, { includeUntouched = fal
     });
     const weightValue = row.querySelector("[data-set-weight]")?.value;
     const repsValue = row.querySelector("[data-set-reps]")?.value;
+    const effortPercentValue = row.querySelector("[data-set-effort-percent]")?.value;
     const setSecondsValue = row.querySelector("[data-set-log-seconds]")?.value;
     const restSecondsValue = row.querySelector("[data-set-log-rest-seconds]")?.value;
     const weight = weightValue === "" ? null : Number(weightValue);
     const reps = repsValue === "" ? null : Number(repsValue);
+    const effortPercent = effortPercentValue === "" ? null : Number(effortPercentValue);
     const setSeconds = setSecondsValue === "" ? null : Number(setSecondsValue);
     const restSeconds = restSecondsValue === "" ? null : Number(restSecondsValue);
     const expectedWeight = resolveSetTemplateAutoWeight(setLog, mainWeight);
     const expectedSetSeconds = normalizeSelectNumber(row.dataset.defaultSetSeconds);
     const expectedRestSeconds = normalizeSelectNumber(row.dataset.defaultRestSeconds);
+    const expectedEffortPercent = normalizeSelectNumber(row.dataset.defaultEffortPercent);
     const isUntouchedSuggestedWeight = reps == null
+      && effortPercent == null
       && weight != null
       && expectedWeight != null
       && Math.abs(weight - expectedWeight) < 0.001;
-    const hasTimingChange = (setSeconds != null || restSeconds != null)
+    const hasDetailChange = (setSeconds != null || restSeconds != null || effortPercent != null)
       && (
         (setSeconds ?? null) !== (expectedSetSeconds ?? null)
         || (restSeconds ?? null) !== (expectedRestSeconds ?? null)
+        || (effortPercent ?? null) !== (expectedEffortPercent ?? null)
       );
 
     if (
       !includeUntouched
-      && !hasTimingChange
+      && !hasDetailChange
       && ((weight == null && reps == null) || isUntouchedSuggestedWeight)
     ) {
       return null;
@@ -1513,6 +1728,7 @@ function collectExerciseSetLogsFromContainer(container, { includeUntouched = fal
       ...setLog,
       weight: Number.isFinite(weight) ? weight : null,
       reps: Number.isFinite(reps) ? reps : null,
+      effortPercent: Number.isFinite(effortPercent) ? effortPercent : expectedEffortPercent,
       setSeconds: Number.isFinite(setSeconds) ? setSeconds : expectedSetSeconds,
       restSeconds: Number.isFinite(restSeconds) ? restSeconds : expectedRestSeconds
     };
@@ -1544,7 +1760,8 @@ function buildGuidedWorkoutDraft(exercise, card, templateKind) {
       : buildExerciseSetDraftsFromTemplate(exercise, {
         defaultWeight: suggestedWeight,
         defaultSetSeconds: exercise.targetSetSeconds ?? inferSetSecondsFromExercise(exercise),
-        defaultRestSeconds: exercise.targetRestSeconds ?? ""
+        defaultRestSeconds: exercise.targetRestSeconds ?? "",
+        defaultEffortPercent: exercise.targetEffortPercent ?? ""
       })
   };
 }
@@ -2210,6 +2427,9 @@ function syncGuidedDraftToForm(index) {
     weightField.value = draft.weightValue ?? "";
   }
   card.dataset.defaultSetWeight = normalizedWeightValue(draft.weightValue ?? draft.targetWeight);
+  card.dataset.defaultEffortPercent = normalizeSelectNumber(draft.effortPercentValue ?? draft.targetEffortPercent) != null
+    ? String(normalizeSelectNumber(draft.effortPercentValue ?? draft.targetEffortPercent))
+    : "";
   if (setTimeField) {
     setTimeField.value = draft.setSecondsValue ?? "";
     setTimeField.dataset.autoSetSeconds = String(inferSetSecondsFromTargetReps(draft.repsValue || draft.targetLogReps || draft.targetReps));
@@ -2225,12 +2445,14 @@ function syncGuidedDraftToForm(index) {
         draft.setLogs?.length ? draft.setLogs : buildExerciseSetDraftsFromTemplate(draft, {
           defaultWeight: normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight,
           defaultSetSeconds: guidedExerciseSetTargetSeconds(draft),
-          defaultRestSeconds: guidedExerciseRestTargetSeconds(draft)
+          defaultRestSeconds: guidedExerciseRestTargetSeconds(draft),
+          defaultEffortPercent: normalizeSelectNumber(draft.effortPercentValue) ?? draft.targetEffortPercent
         }),
         draft.targetReps,
         normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight,
         guidedExerciseSetTargetSeconds(draft),
-        guidedExerciseRestTargetSeconds(draft)
+        guidedExerciseRestTargetSeconds(draft),
+        normalizeSelectNumber(draft.effortPercentValue) ?? draft.targetEffortPercent
       );
     }
 
@@ -2379,6 +2601,169 @@ function buildGuidedHistoryMarkup(exerciseName) {
   `;
 }
 
+function guidedWorkoutIsCaliContext(draft = currentGuidedWorkoutDraft()) {
+  const text = [
+    ui.guidedWorkout.templateTitle,
+    draft?.name,
+    draft?.templateNote,
+    draft?.notes
+  ].join(" ").toLowerCase();
+
+  return ui.guidedWorkout.templateKind === "functional"
+    || /\bcali|calisthenics|dead hang|human flag|handstand|hspu/.test(text);
+}
+
+function guidedWorkoutChatSuggestions(draft = currentGuidedWorkoutDraft()) {
+  if (!draft) {
+    return [];
+  }
+
+  if (guidedWorkoutIsCaliContext(draft)) {
+    return [
+      "Need the cali reminder",
+      "Want the shortest useful version",
+      "Shoulders feel cooked",
+      "Want more volume"
+    ];
+  }
+
+  if (/\bsquat|deadlift|rdl|hip thrust|leg press|split squat|lunge|ham/i.test(draft.name || "")) {
+    return [
+      "Legs feel heavy",
+      "Want the shortest useful version",
+      "Want to push heavier",
+      "Need an easier option"
+    ];
+  }
+
+  return [
+    "Want the shortest useful version",
+    "Shoulders feel cooked",
+    "Want more push today",
+    "Need an easier option"
+  ];
+}
+
+function buildGuidedWorkoutCoachIntro(draft = currentGuidedWorkoutDraft()) {
+  const exerciseName = draft?.name || "this exercise";
+  const baseLine = `Talk to me during the session about how it feels or what you want, and I will keep the answer tied to ${exerciseName.toLowerCase()} plus the rest of this workout.`;
+
+  if (guidedWorkoutIsCaliContext(draft)) {
+    return `${baseLine} For cali today: bare tag en masse reps. Volume over pauser. Keep it faster and more efficient for what you actually need.`;
+  }
+
+  return `${baseLine} If you want the shortest useful version, say so and we will trim it down without losing the point of the day.`;
+}
+
+function pushGuidedWorkoutChatMessage(role, text) {
+  if (!text) {
+    return;
+  }
+
+  ui.guidedWorkout.chatMessages.push({
+    id: uid(),
+    role,
+    text
+  });
+}
+
+function ensureGuidedWorkoutChat(draft = currentGuidedWorkoutDraft()) {
+  if (!draft || ui.guidedWorkout.chatMessages.length) {
+    return;
+  }
+
+  pushGuidedWorkoutChatMessage("assistant", buildGuidedWorkoutCoachIntro(draft));
+}
+
+function buildGuidedWorkoutCoachReply(prompt, draft = currentGuidedWorkoutDraft()) {
+  const raw = String(prompt || "").trim();
+  const text = raw.toLowerCase();
+  const exerciseName = draft?.name || "this exercise";
+  const remainingExercises = Math.max(0, ui.guidedWorkout.exerciseDrafts.length - ui.guidedWorkout.exerciseIndex - 1);
+  const lines = [];
+  const caliContext = guidedWorkoutIsCaliContext(draft);
+
+  if (caliContext && (lines.length === 0 || /\bcali|volume|reps|paus|rest|dense|efficien|hurtig|remind/.test(text))) {
+    lines.push("For cali today: bare tag en masse reps. Volume over pauser. Keep it dense and useful instead of stretching the session with long rests.");
+  }
+
+  if (/\bshort|shorter|quick|busy|time|efficient|kort|hurtig|trim/.test(text)) {
+    lines.push(`Make ${exerciseName.toLowerCase()} the anchor, then keep only one support move if you still want it. Shortest useful version beats finishing everything slowly.`);
+  }
+
+  if (/\bshoulder|shoulders|wrist|wrists|back|lats?|pain|hurt|cooked|irritat|øm|sore/.test(text)) {
+    lines.push("Keep the reps clean and strip out the flashy stuff. If the joints feel off, stop chasing skill or heavy pressing and bias rows, core, or just end the upper work earlier.");
+  }
+
+  if (/\blegs?|glutes?|quads?|hams?|fried|dead|flat|tired|heavy/.test(text)) {
+    lines.push("Treat today like a quality-control day, not a hero day. Keep the first important sets sharp, lower the accessory cost, and do not force speed if the legs feel boxed in.");
+  }
+
+  if (/\bheavy|heavier|push|strong|stronger|pr|max|load/.test(text)) {
+    lines.push("Put the intent into the first anchor lift only. Accessories should stay clean, controlled, and 1 to 2 reps away from the grind.");
+  }
+
+  if (/\bvolume|reps|pump|more|many|dens/.test(text) && !caliContext) {
+    lines.push("Bias total reps and shorter rests on the easier movements, not failure-chasing on the first lift. More work only counts if the quality stays high.");
+  }
+
+  if (/\bskip|change|swap|another|different/.test(text)) {
+    lines.push(`You can pivot. Start a different session or cut this one down; there ${remainingExercises === 1 ? "is" : "are"} still ${remainingExercises} exercise${remainingExercises === 1 ? "" : "s"} after this, so protecting the whole workout matters more than forcing one piece.`);
+  }
+
+  if (!lines.length) {
+    lines.push(caliContext
+      ? "Keep this cali touch simple: accumulate good reps, keep rest honest, and leave before it turns into filler."
+      : `I would keep ${exerciseName.toLowerCase()} clean and useful, then let the rest of the workout match how you actually feel instead of what looked perfect on paper.`);
+  }
+
+  return lines.slice(0, 3).join(" ");
+}
+
+function scrollGuidedChatThreadToBottom() {
+  if (!refs.guidedChatThread) {
+    return;
+  }
+
+  refs.guidedChatThread.scrollTop = refs.guidedChatThread.scrollHeight;
+}
+
+function renderGuidedWorkoutChat(draft = currentGuidedWorkoutDraft()) {
+  if (!draft) {
+    return;
+  }
+
+  ensureGuidedWorkoutChat(draft);
+  refs.guidedChatContext.textContent = `${draft.name || "Exercise"} • ${ui.guidedWorkout.exerciseIndex + 1}/${ui.guidedWorkout.exerciseDrafts.length}`;
+  refs.guidedChatSuggestions.innerHTML = guidedWorkoutChatSuggestions(draft).map((prompt) => `
+    <button class="guided-chat-chip" type="button" data-guided-chat-prompt="${escapeAttribute(prompt)}">${escapeHtml(prompt)}</button>
+  `).join("");
+  refs.guidedChatThread.innerHTML = ui.guidedWorkout.chatMessages.length
+    ? ui.guidedWorkout.chatMessages.map((message) => `
+      <article class="guided-chat-message ${message.role === "user" ? "is-user" : ""}">
+        <div class="guided-chat-role">${message.role === "user" ? "You" : "Coach"}</div>
+        <div class="guided-chat-text">${escapeHtml(message.text)}</div>
+      </article>
+    `).join("")
+    : `<div class="guided-chat-empty helper-text">Talk through how it feels and what you want from the session.</div>`;
+  refs.guidedChatInput.value = ui.guidedWorkout.chatInputValue || "";
+  scrollGuidedChatThreadToBottom();
+}
+
+function submitGuidedWorkoutChat(prompt = refs.guidedChatInput?.value || "") {
+  const draft = currentGuidedWorkoutDraft();
+  const text = String(prompt || "").trim();
+  if (!draft || !text) {
+    return;
+  }
+
+  pushGuidedWorkoutChatMessage("user", text);
+  pushGuidedWorkoutChatMessage("assistant", buildGuidedWorkoutCoachReply(text, draft));
+  ui.guidedWorkout.chatInputValue = "";
+  refs.guidedChatInput.value = "";
+  renderGuidedWorkoutChat(draft);
+}
+
 function renderGuidedWorkoutUI() {
   const draft = currentGuidedWorkoutDraft();
   const isVisible = ui.guidedWorkout.active && ui.guidedWorkout.visible && ui.logMode === "routine" && ui.screen === "log";
@@ -2487,6 +2872,7 @@ function renderGuidedWorkoutUI() {
   refs.guidedNextExercise.textContent = ui.guidedWorkout.exerciseIndex === ui.guidedWorkout.exerciseDrafts.length - 1
     ? "Finish workout"
     : "Next exercise";
+  refs.guidedChatPanel.classList.toggle("hidden", showIntro);
 
   if (shouldRefreshContent) {
     refs.guidedWorkoutFields.innerHTML = buildExerciseRollerFieldsMarkup({
@@ -2509,13 +2895,16 @@ function renderGuidedWorkoutUI() {
       draft.setLogs?.length ? draft.setLogs : buildExerciseSetDraftsFromTemplate(draft, {
         defaultWeight: normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight,
         defaultSetSeconds: guidedExerciseSetTargetSeconds(draft),
-        defaultRestSeconds: guidedExerciseRestTargetSeconds(draft)
+        defaultRestSeconds: guidedExerciseRestTargetSeconds(draft),
+        defaultEffortPercent: normalizeSelectNumber(draft.effortPercentValue) ?? draft.targetEffortPercent
       }),
       draft.targetReps,
       normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight,
       guidedExerciseSetTargetSeconds(draft),
-      guidedExerciseRestTargetSeconds(draft)
+      guidedExerciseRestTargetSeconds(draft),
+      normalizeSelectNumber(draft.effortPercentValue) ?? draft.targetEffortPercent
     );
+    renderGuidedWorkoutChat(draft);
     ui.guidedWorkout.renderedExerciseIndex = ui.guidedWorkout.exerciseIndex;
   }
 }
@@ -2543,7 +2932,8 @@ function handleGuidedWorkoutClick(event) {
     appendExerciseFollowupRow(row, {
       defaultWeight: normalizeSelectNumber(currentGuidedWorkoutDraft()?.weightValue) ?? currentGuidedWorkoutDraft()?.targetWeight,
       defaultSetSeconds: guidedExerciseSetTargetSeconds(currentGuidedWorkoutDraft()),
-      defaultRestSeconds: guidedExerciseRestTargetSeconds(currentGuidedWorkoutDraft())
+      defaultRestSeconds: guidedExerciseRestTargetSeconds(currentGuidedWorkoutDraft()),
+      defaultEffortPercent: normalizeSelectNumber(currentGuidedWorkoutDraft()?.effortPercentValue) ?? currentGuidedWorkoutDraft()?.targetEffortPercent
     });
     syncGuidedSetLogsFromPanel();
     return;
@@ -2556,7 +2946,8 @@ function handleGuidedWorkoutClick(event) {
         targetReps: currentGuidedWorkoutDraft()?.targetReps || "",
         defaultWeight: normalizeSelectNumber(currentGuidedWorkoutDraft()?.weightValue) ?? currentGuidedWorkoutDraft()?.targetWeight,
         defaultSetSeconds: guidedExerciseSetTargetSeconds(currentGuidedWorkoutDraft()),
-        defaultRestSeconds: guidedExerciseRestTargetSeconds(currentGuidedWorkoutDraft())
+        defaultRestSeconds: guidedExerciseRestTargetSeconds(currentGuidedWorkoutDraft()),
+        defaultEffortPercent: normalizeSelectNumber(currentGuidedWorkoutDraft()?.effortPercentValue) ?? currentGuidedWorkoutDraft()?.targetEffortPercent
       });
     }
     renumberExerciseSetRows(refs.guidedSetList);
@@ -2596,7 +2987,13 @@ function handleGuidedWorkoutChange(event) {
     }
   }
   if (event.target.matches("[data-effort-percent]")) {
+    const previousEffortPercent = draft.effortPercentValue;
     draft.effortPercentValue = event.target.value;
+    syncSetEffortInputs(refs.guidedSetList, {
+      nextEffortPercent: draft.effortPercentValue,
+      previousEffortPercent
+    });
+    syncGuidedSetLogsFromPanel();
   }
   if (event.target.matches("[data-lift-weight]")) {
     const previousWeight = draft.weightValue;
@@ -2630,7 +3027,7 @@ function handleGuidedWorkoutChange(event) {
     ui.guidedWorkout.frozenExerciseElapsedSeconds = null;
     ui.guidedWorkout.enteredExerciseAt = Date.now();
   }
-  if (event.target.matches("[data-set-weight], [data-set-reps], [data-set-log-seconds], [data-set-log-rest-seconds]")) {
+  if (event.target.matches("[data-set-weight], [data-set-reps], [data-set-effort-percent], [data-set-log-seconds], [data-set-log-rest-seconds]")) {
     syncGuidedSetLogsFromPanel();
     if (event.target.matches("[data-set-log-seconds], [data-set-log-rest-seconds]")) {
       ui.guidedWorkout.frozenExerciseElapsedSeconds = null;
@@ -2653,7 +3050,7 @@ function handleGuidedWorkoutInput(event) {
     syncGuidedDraftToForm(ui.guidedWorkout.exerciseIndex);
   }
 
-  if (event.target.matches("[data-set-weight], [data-set-reps], [data-set-log-seconds], [data-set-log-rest-seconds]")) {
+  if (event.target.matches("[data-set-weight], [data-set-reps], [data-set-effort-percent], [data-set-log-seconds], [data-set-log-rest-seconds]")) {
     syncGuidedSetLogsFromPanel();
   }
 }
@@ -2678,7 +3075,8 @@ function appendGuidedSetRow() {
     targetReps: draft.targetReps || "",
     defaultWeight: normalizeSelectNumber(draft.weightValue) ?? draft.targetWeight,
     defaultSetSeconds: guidedExerciseSetTargetSeconds(draft),
-    defaultRestSeconds: guidedExerciseRestTargetSeconds(draft)
+    defaultRestSeconds: guidedExerciseRestTargetSeconds(draft),
+    defaultEffortPercent: normalizeSelectNumber(draft.effortPercentValue) ?? draft.targetEffortPercent
   });
   syncGuidedSetLogsFromPanel();
 }
@@ -2708,6 +3106,19 @@ function handleRoutineExerciseFieldChange(event) {
       previousWeight
     });
     card.dataset.defaultSetWeight = normalizedWeightValue(nextWeight);
+  }
+
+  if (event.target.matches("[data-effort-percent]")) {
+    const previousEffortPercent = card.dataset.defaultEffortPercent || "";
+    const nextEffortPercent = event.target.value;
+
+    syncSetEffortInputs(setList, {
+      nextEffortPercent,
+      previousEffortPercent
+    });
+    card.dataset.defaultEffortPercent = normalizeSelectNumber(nextEffortPercent) != null
+      ? String(normalizeSelectNumber(nextEffortPercent))
+      : "";
   }
 
   if (event.target.matches("[data-set-seconds], [data-rest-seconds]")) {
@@ -3005,6 +3416,9 @@ function populateRoutineExerciseFieldsFromLogs(exerciseLogs = []) {
     if (effortField) {
       effortField.value = getExerciseEffortPercent(entry) ?? "";
     }
+    card.dataset.defaultEffortPercent = normalizeSelectNumber(getExerciseEffortPercent(entry)) != null
+      ? String(normalizeSelectNumber(getExerciseEffortPercent(entry)))
+      : "";
     card.querySelector("[data-note]").value = entry.note ?? "";
     const liftWeightField = card.querySelector("[data-lift-weight]");
     if (liftWeightField) {
@@ -3027,7 +3441,8 @@ function populateRoutineExerciseFieldsFromLogs(exerciseLogs = []) {
         card.dataset.targetReps || "",
         summary.keyWeight ?? entry.keyWeight ?? null,
         entry.setSeconds ?? "",
-        entry.restSeconds ?? ""
+        entry.restSeconds ?? "",
+        getExerciseEffortPercent(entry) ?? ""
       );
     }
     if (entry.note) {
@@ -3270,7 +3685,7 @@ function buildRoutineLogExerciseCardMarkup(exercise, sessionKind) {
     : `<div class="helper-text">No previous exercise log yet</div>`;
 
   return `
-    <article class="exercise-card" data-exercise-name="${escapeHtml(exercise.name)}" data-target-reps="${escapeAttribute(exercise.targetReps)}" data-default-set-weight="${escapeAttribute(normalizedWeightValue(suggestedWeight))}">
+    <article class="exercise-card" data-exercise-name="${escapeHtml(exercise.name)}" data-target-reps="${escapeAttribute(exercise.targetReps)}" data-default-set-weight="${escapeAttribute(normalizedWeightValue(suggestedWeight))}" data-default-effort-percent="${escapeAttribute(normalizeSelectNumber(exercise.targetEffortPercent) ?? "")}">
       <div class="exercise-head">
         <div>
           <div class="list-title">${escapeHtml(exercise.name)}</div>
@@ -3310,13 +3725,20 @@ function buildRoutineLogExerciseCardMarkup(exercise, sessionKind) {
       </label>
 
       <div class="exercise-panel hidden" data-exercise-panel="details">
+        <div class="helper-text">Leave the workout running and fill these rollers in whenever the exercise is done.</div>
         <div class="exercise-set-list" data-set-list>
           ${buildExerciseSetRowsMarkup(
-          buildExerciseSetDraftsFromTemplate(exercise, { defaultWeight: suggestedWeight }),
+          buildExerciseSetDraftsFromTemplate(exercise, {
+            defaultWeight: suggestedWeight,
+            defaultSetSeconds: exercise.targetSetSeconds ?? inferSetSecondsFromExercise(exercise),
+            defaultRestSeconds: exercise.targetRestSeconds ?? "",
+            defaultEffortPercent: exercise.targetEffortPercent ?? ""
+          }),
           exercise.targetReps,
           suggestedWeight,
           exercise.targetSetSeconds ?? inferSetSecondsFromExercise(exercise),
-          exercise.targetRestSeconds ?? ""
+          exercise.targetRestSeconds ?? "",
+          exercise.targetEffortPercent ?? ""
         )}
         </div>
 
@@ -4677,6 +5099,7 @@ function renderDataViews() {
   renderRoutines();
   renderProgress();
   renderBodyHistory();
+  renderCoachChatPage();
   renderPlannerPanels();
   refreshRoutineLogOptions();
 }
@@ -4905,7 +5328,7 @@ function buildSurfFirstPlanSummaryMarkup(installedBlock, profile = buildTraining
       <p class="eyebrow">${installedBlock ? "Installed" : "What the week looks like"}</p>
       <div class="list-title">${installedBlock ? `${installedBlock.name} is active` : "Low-cost land training around surf"}</div>
       <div class="helper-text">
-        Built around your logged patterns instead of only a preset: surf still stays first, upper work stays present as one cali touch plus one gym-balance touch, and when lower-body strength shows up as a real anchor in your history the plan adds a short second lower support touch instead of pretending one leg day will cover everything.
+        Built around your logged patterns instead of only a preset: surf still stays first, upper work stays present as one cali touch plus one gym-balance touch, the second lower touch stays in, and a weekly long run now has a clear place before the later speed run.
       </div>
     </div>
 
@@ -5126,9 +5549,34 @@ function plannerAnchorLabel(values = [], fallback = "", limit = 3) {
   return selected.length ? selected.join(" • ") : fallback;
 }
 
-function personalizeRoutineExercise(baseExercise, preferredName) {
+function getPreviousExerciseEntryFromWorkouts(exerciseName, workouts = [], { excludeWorkoutId = null } = {}) {
+  for (const workout of [...(Array.isArray(workouts) ? workouts : [])].sort((a, b) => compareDates(b.date, a.date))) {
+    if (excludeWorkoutId && workout.id === excludeWorkoutId) {
+      continue;
+    }
+
+    for (const entry of workout.exerciseLogs || []) {
+      if (entry.name?.toLowerCase() !== exerciseName.toLowerCase()) {
+        continue;
+      }
+
+      return {
+        ...entry,
+        workoutId: workout.id,
+        workoutDate: workout.date,
+        workoutTitle: workout.title
+      };
+    }
+  }
+
+  return null;
+}
+
+function personalizeRoutineExercise(baseExercise, preferredName, { workouts = null } = {}) {
   const name = preferredName || baseExercise.name;
-  const latestEntry = getPreviousExerciseEntry(name);
+  const latestEntry = Array.isArray(workouts)
+    ? getPreviousExerciseEntryFromWorkouts(name, workouts)
+    : getPreviousExerciseEntry(name);
   const summary = latestEntry ? summarizeExerciseLog(latestEntry) : null;
 
   return {
@@ -5258,10 +5706,12 @@ function installSurfFirstBasePlan({ silent = false } = {}) {
   state.activeBlockId = blockId;
   persistState();
   renderDataViews();
-  ui.surfPlanStatus = {
-    message: `Surf-first base plan installed and set active. The week now prioritizes daily surf windows, ${strategy.lowerSessions} lower-body touch${strategy.lowerSessions === 1 ? "" : "es"}, ${strategy.upperSessions} upper sessions, ${strategy.qualityRuns} run anchor${strategy.qualityRuns === 1 ? "" : "s"}, and protected grocery / meal-prep anchors.`,
-    tone: "success"
-  };
+  if (!silent) {
+    ui.surfPlanStatus = {
+      message: `Surf-first base plan installed and set active. The week now prioritizes daily surf windows, ${strategy.lowerSessions} lower-body touch${strategy.lowerSessions === 1 ? "" : "es"}, ${strategy.upperSessions} upper sessions, 1 weekly long run, ${strategy.qualityRuns} sharper run anchor${strategy.qualityRuns === 1 ? "" : "s"}, and protected grocery / meal-prep anchors.`,
+      tone: "success"
+    };
+  }
   renderPlannerPanels();
   if (!silent) {
     showToast("Surf-first base plan installed");
@@ -5307,7 +5757,7 @@ function surfFirstPlanRoutines(profile = buildTrainingHistoryProfile(), strategy
       kind: "mixed",
       sessionKind: "functional",
       estimatedMinutes: 50,
-      notes: `Outdoor calisthenics first choice. ${preferred.upperPullMain}, ${preferred.upperDip.toLowerCase()}, hanging work, and trunk control matter more than bodybuilding fatigue right now.`,
+      notes: `Outdoor calisthenics first choice. ${preferred.upperPullMain}, ${preferred.upperDip.toLowerCase()}, hanging work, and trunk control matter more than bodybuilding fatigue right now. Bare tag en masse reps, keep volume over pauser, and make it faster and more useful for what you actually need.`,
       exercises: [
         personalizeRoutineExercise({ name: "Pull-Up", targetSets: 4, targetReps: "4-6", targetLogReps: 5, targetEffortPercent: 85, targetRestSeconds: 120, notes: "Stay strict." }, preferred.upperPullMain),
         personalizeRoutineExercise({ name: "Dips", targetSets: 3, targetReps: "6-8", targetLogReps: 8, targetWeight: 5, targetEffortPercent: 85, targetRestSeconds: 120, notes: "Clean reps first." }, preferred.upperDip),
@@ -5315,6 +5765,15 @@ function surfFirstPlanRoutines(profile = buildTrainingHistoryProfile(), strategy
         personalizeRoutineExercise({ name: "Weighted Plank", targetSets: 3, targetReps: "30-45 s", targetSetSeconds: 40, targetRestSeconds: 75, notes: "Trunk tension." }, preferred.core),
         { id: uid(), name: "Human Flag / HSPU Skill", targetSets: 3, targetReps: "2-4 quality reps", targetRestSeconds: 120, notes: "Only if the shoulders feel good." }
       ]
+    },
+    {
+      systemKey: "surf-first-long-run-v1",
+      name: "Weekly Long Run / Engine Hold",
+      kind: "conditioning",
+      sessionKind: "run",
+      estimatedMinutes: 70,
+      notes: "Weekly long-run anchor placed earlier in the week. This protects the aerobic engine and lets the sharper speed touch wait until later instead of landing too close to heavy lower-body work.",
+      exercises: []
     },
     {
       systemKey: "surf-first-upper-pull-v1",
@@ -5338,8 +5797,8 @@ function surfFirstPlanRoutines(profile = buildTrainingHistoryProfile(), strategy
       sessionKind: "run",
       estimatedMinutes: 40,
       notes: strategy.qualityRuns > 1
-        ? "Your history can still support two sharper run touches on flatter or lower-value surf weeks. Protect Wednesday as the first quality run and use a second touch only when energy and ocean both allow it."
-        : "One quality run each week is the minimum anchor to hold your 5k feel. Use 6 x 400 m, 4 x 800 m, or a short tempo if the surf is flat or low-value.",
+        ? "Your history can still support sharper run work on flatter or lower-value surf weeks, but it fits better later in the week than right after heavy lower-body work. Use this as the later speed touch when energy and ocean both allow it."
+        : "Use this as the later-week sharper run when the ocean is flat or low-value. The steadier long run now sits earlier, and this one protects the speed without landing too close to heavy lower-body work.",
       exercises: []
     },
     {
@@ -5447,21 +5906,17 @@ function surfFirstWeekBlueprint(profile = buildTrainingHistoryProfile(), strateg
     {
       dayIndex: 2,
       dayLabel: "Wed",
-      focus: "Run sharpener or swim fallback",
-      detail: strategy.qualityRuns > 1
-        ? "This is the first protected engine anchor. If the ocean is flat, hit the quality run and leave room for one more sharp touch later in the week only if energy stays good."
-        : "This is the weekly engine anchor. If the surf is excellent, surf and move the run to flat days. If the ocean is flat, hit the quality run.",
+      focus: "Weekly long run anchor",
+      detail: "This is the long-run slot in the week. It fits better here than forcing the sharper speed run too close to heavy lower-body work. If the ocean is excellent or the legs feel beat up, the swim reset is the fallback, not the default.",
       kind: "run",
-      routineKey: "surf-first-run-sharpener-v1",
-      sessionTitle: "5k hold sharpener",
-      details: "Protect the run engine here first. Swap to easy swim if the shoulders want cleaner volume and the legs need a break.",
+      routineKey: "surf-first-long-run-v1",
+      sessionTitle: "Weekly long run / engine hold",
+      details: "Protect the aerobic engine here with a real long run. Keep the sharper speed touch for later in the week if the ocean is flat and energy stays good.",
       calendar: {
         startTime: "13:45",
-        endTime: "14:45",
-        summary: strategy.qualityRuns > 1 ? "Quality run anchor / swim fallback" : "5k sharpener / swim fallback",
-        description: strategy.qualityRuns > 1
-          ? "This is the first protected quality run. If the surf is excellent or recovery is off, swap to the swim reset and keep the run for the next flat day."
-          : "One quality run keeps the run engine alive. If the surf is excellent or the legs are flat, swap to an easy swim reset instead.",
+        endTime: "15:15",
+        summary: "Weekly long run / swim fallback",
+        description: "Use this as the fixed long-run slot and move the sharper speed touch later in the week. If the surf is excellent or recovery is off, swap to the swim reset instead.",
         category: "run",
         flexible: true
       }
@@ -5488,30 +5943,18 @@ function surfFirstWeekBlueprint(profile = buildTrainingHistoryProfile(), strateg
     {
       dayIndex: 5,
       dayLabel: "Sat",
-      focus: "Best surf and social day",
-      detail: strategy.qualityRuns > 1
-        ? "Use this as the flex day. Great waves can turn into a longer surf; flat surf and good energy can turn into a short second quality run or a controlled long run."
-        : (strategy.supportsOptionalLongRun
-          ? "Use this as your open outside day. Good waves can turn into surf, but flat weeks can make this the best slot for a long run."
-          : "Use this as your most open outside day. Good waves can turn into a longer or second surf. Good people can turn this into the social anchor."),
-      kind: "surf",
-      routineKey: null,
-      sessionTitle: "Surf priority / social buffer",
-      details: strategy.qualityRuns > 1
-        ? "If there is no surf and no social pull, this is the flex slot for the second run touch. If life is busy, leave it open."
-        : (strategy.supportsOptionalLongRun
-          ? "If there is no surf and no social pull, use this as the long-run buffer before you force extra gym work."
-          : "If there is no surf and no social pull, optional easy calisthenics skills or a very easy run are enough."),
+      focus: "Best surf, social, or later-week speed touch",
+      detail: "Keep this day flexible for waves and people first, but if the ocean is average this is the better slot for the sharper speed run. That lands better than intervals only two days after the heavy lower session.",
+      kind: "run",
+      routineKey: "surf-first-run-sharpener-v1",
+      sessionTitle: "Surf priority / later-week speed touch",
+      details: "If the surf is genuinely good, surf and move the sharpener. If the ocean is average, use this as the later-week speed slot.",
       calendar: {
         startTime: "17:00",
-        endTime: "20:00",
-        summary: "Open social / outside buffer",
-        description: strategy.qualityRuns > 1
-          ? "Keep this flexible for friends, surf, outside time, or a second short quality run if the ocean is flat and energy is still good."
-          : (strategy.supportsOptionalLongRun
-            ? "Keep this flexible for surf, friends, or a longer aerobic run if the waves are poor and energy is there."
-            : "Keep this loose for friends, Spanish, outside time, or a second surf if the day is too good to pass up."),
-        category: "open",
+        endTime: "18:15",
+        summary: "Later-week speed touch / surf buffer",
+        description: "Keep this flexible for surf and people first, but if the ocean is average this is the better place for the sharper run touch.",
+        category: "run",
         flexible: true
       }
     },
@@ -5551,8 +5994,8 @@ function buildSurfFirstPlanBlock(routineIds = {}, profile = buildTrainingHistory
     systemKey: SURF_FIRST_BLOCK_KEY,
     name: "Surf-First Cafe Season",
     focus: strategy.useLowerSupportReset
-      ? "Surf progression first. Hold the run engine, keep two lower-body touches without making both expensive, keep two upper sessions, and still protect enough energy for work, groceries, meal prep, and social life."
-      : "Surf progression first. Hold the run engine, keep lower strength alive, build upper-body skill, and protect enough energy for work, groceries, meal prep, and social life.",
+      ? "Surf progression first. Hold one weekly long run plus the sharper run touch, keep two lower-body touches without making both expensive, keep two upper sessions, and still protect enough energy for work, groceries, meal prep, and social life."
+      : "Surf progression first. Hold one weekly long run, keep lower strength alive, build upper-body skill, and protect enough energy for work, groceries, meal prep, and social life.",
     currentWeekIndex: 0,
     isLooping: true,
     weeks: [
@@ -5561,8 +6004,8 @@ function buildSurfFirstPlanBlock(routineIds = {}, profile = buildTrainingHistory
         systemKey: `${SURF_FIRST_BLOCK_KEY}-week-1`,
         title: "Flexible surf-first base",
         note: strategy.useLowerSupportReset
-          ? "Morning surf is the first choice. Midday land work stays short and useful. The second lower touch is support volume, not another draining leg day."
-          : "Morning surf is the first choice. Midday land work is the anchor. Social and life admin stay protected on purpose.",
+          ? "Morning surf is the first choice. Midday land work stays short and useful. The second lower touch is support volume, not another draining leg day, and the long run now has its own fixed slot."
+          : "Morning surf is the first choice. Midday land work is the anchor. The long run has its own fixed slot, and social and life admin stay protected on purpose.",
         plannedSessions: sessions
       }
     ]
@@ -6137,6 +6580,239 @@ function renderBodyHistory() {
     : buildEmptyCard("No body check-ins yet", "Use this screen to tell the app what is actually fatigued.");
 }
 
+function coachChatState() {
+  if (!state.coachChat) {
+    state.coachChat = createCoachChatState();
+  }
+  return state.coachChat;
+}
+
+function isLongRunWorkout(workout = {}) {
+  if (workout.kind !== "run") {
+    return false;
+  }
+
+  const combined = `${workout.title || ""} ${workout.notes || ""} ${workout.primaryMetric || ""}`.toLowerCase();
+  return (workout.durationMinutes || 0) >= 60 || /\blong run\b/.test(combined);
+}
+
+function buildCoachChatHistorySnapshot() {
+  const lastSeven = [...state.workouts]
+    .filter((workout) => daysAgo(workout.date) <= 6)
+    .sort((a, b) => compareDates(b.date, a.date));
+  const runSessions = lastSeven.filter((workout) => workout.kind === "run");
+
+  return {
+    lastSeven,
+    runSessions,
+    lowerTouches: lastSeven.filter((workout) => workoutTargetsLowerStrength(workout)).length,
+    upperTouches: lastSeven.filter((workout) => workoutTargetsUpperStrength(workout)).length,
+    qualityRuns: runSessions.filter((workout) => isQualityRunSession(workout)).length,
+    longRuns: runSessions.filter((workout) => isLongRunWorkout(workout)).length
+  };
+}
+
+function coachChatPromptSuggestions() {
+  const goal = coachChatState().goal.toLowerCase();
+  const suggestions = [
+    "What should I do today?",
+    "How should I adjust this week?",
+    "I feel flat today. What is smartest?",
+    "Does this still fit my goal?"
+  ];
+
+  if (/\blong run|5k|run|race|pace|tempo|interval|ironman\b/.test(goal) || getActiveBlock()?.systemKey === SURF_FIRST_BLOCK_KEY) {
+    suggestions.push("How do I keep the long run in?");
+  }
+
+  if (/\bstrong|strength|lower|upper|muscle|cali|pull\b/.test(goal)) {
+    suggestions.push("Is my lower / upper split enough?");
+  }
+
+  if (getActiveBlock()?.systemKey === SURF_FIRST_BLOCK_KEY) {
+    suggestions.push("How should surf change this week?");
+  }
+
+  return uniqueValues(suggestions).slice(0, 5);
+}
+
+function buildCoachChatSummaryMarkup() {
+  const chat = coachChatState();
+  const goal = chat.goal.trim();
+  const summary = buildSummary();
+  const latestCheckIn = latestBodyCheckIn();
+  const plannerView = buildLogPlannerView();
+  const profile = buildTrainingHistoryProfile();
+  const history = buildCoachChatHistorySnapshot();
+  const primaryGuidance = summary.guidance[0];
+
+  const cards = [
+    {
+      eyebrow: "Goal",
+      title: goal || "Set your main goal here",
+      detail: goal
+        ? "Replies will keep bending back toward this."
+        : "Example: keep the long run in, hold two lower days, and stay strong for surf."
+    },
+    {
+      eyebrow: "Today",
+      title: primaryGuidance ? primaryGuidance.title : "No live guidance yet",
+      detail: primaryGuidance
+        ? primaryGuidance.nextBestOption
+        : "Log a workout or body check-in and the coach will get more specific."
+    },
+    {
+      eyebrow: "Week",
+      title: plannerView?.summaryAction
+        ? `${plannerView.summaryAction.dayDisplay}: ${plannedSessionTitle(plannerView.summaryAction.session)}`
+        : (getActiveBlock()?.name || "No active block"),
+      detail: plannerView?.summaryText || activeBlockSuggestion() || "Add or activate a block to make weekly suggestions tighter."
+    },
+    {
+      eyebrow: "Pattern",
+      title: `${history.lowerTouches} lower • ${history.upperTouches} upper • ${history.runSessions.length} runs`,
+      detail: latestCheckIn
+        ? `Latest body read: sleep ${formatNumber(latestCheckIn.sleepHours)} h, energy ${latestCheckIn.energy}/5, soreness ${latestCheckIn.soreness}/5, loaded ${areaLabels(latestCheckIn.fatiguedAreas).toLowerCase()}.`
+        : `History still points to about ${formatNumber(profile.observedLowerPerWeek)} lower and ${formatNumber(profile.observedUpperPerWeek)} upper touches per week.`
+    }
+  ];
+
+  return cards.map((card) => `
+    <article class="coach-context-pill">
+      <p class="eyebrow">${escapeHtml(card.eyebrow)}</p>
+      <div class="list-title">${escapeHtml(card.title)}</div>
+      <div class="helper-text">${escapeHtml(card.detail)}</div>
+    </article>
+  `).join("");
+}
+
+function renderCoachChatSummary() {
+  refs.coachChatSummary.innerHTML = buildCoachChatSummaryMarkup();
+}
+
+function renderCoachChatPrompts() {
+  refs.coachChatPrompts.innerHTML = coachChatPromptSuggestions().map((prompt) => `
+    <button class="coach-chat-chip" type="button" data-coach-chat-prompt="${escapeAttribute(prompt)}">${escapeHtml(prompt)}</button>
+  `).join("");
+}
+
+function pushCoachChatMessage(role, text) {
+  if (!text) {
+    return;
+  }
+
+  const chat = coachChatState();
+  chat.messages.push({
+    id: uid(),
+    role,
+    text
+  });
+  chat.messages = chat.messages.slice(-30);
+}
+
+function buildCoachChatReply(prompt) {
+  const raw = String(prompt || "").trim();
+  const text = raw.toLowerCase();
+  const chat = coachChatState();
+  const goal = chat.goal.trim();
+  const summary = buildSummary();
+  const primaryGuidance = summary.guidance[0];
+  const latestCheckIn = latestBodyCheckIn();
+  const fatiguedAreas = new Set(latestCheckIn?.fatiguedAreas || []);
+  const plannerView = buildLogPlannerView();
+  const profile = buildTrainingHistoryProfile();
+  const history = buildCoachChatHistorySnapshot();
+  const lines = [];
+
+  if (/\b(today|now|do|session|train|feel|feeling|flat|tired|cooked|sore|recovery|recover|smartest)\b/.test(text)) {
+    if (primaryGuidance?.nextBestOption) {
+      lines.push(goal
+        ? `With your goal of ${goal.replace(/[.?!]\s*$/, "")}, ${primaryGuidance.nextBestOption.charAt(0).toLowerCase()}${primaryGuidance.nextBestOption.slice(1)}`
+        : primaryGuidance.nextBestOption);
+    }
+
+    if (fatiguedAreas.size) {
+      lines.push(bodyAreaRedirect(fatiguedAreas));
+    }
+  }
+
+  if (/\b(week|schedule|plan|split|move|swap|later|tomorrow|this week|surf)\b/.test(text)) {
+    if (getActiveBlock()?.systemKey === SURF_FIRST_BLOCK_KEY) {
+      lines.push("Keep the weekly long run in the mid-week slot and let the sharper speed run sit later in the week. That order fits your lower-body work better.");
+    }
+
+    if (plannerView?.summaryAction) {
+      lines.push(`The block currently points to ${plannerView.summaryAction.dayDisplay} for ${plannedSessionTitle(plannerView.summaryAction.session)}, but you can move that session to the day that actually fits.`);
+    }
+  }
+
+  if (/\b(long run|run|5k|tempo|interval|speed)\b/.test(text)) {
+    lines.push(history.longRuns
+      ? `You already have ${history.longRuns} long-run touch${history.longRuns === 1 ? "" : "es"} in the last 7 days, so the next run should either stay easy or stay short-and-sharp depending on how your legs feel.`
+      : "You do not need random extra run volume. Keep one real long run in the week, then protect the sharper speed touch later instead of stacking both close to heavy leg work.");
+  }
+
+  if (/\b(lower|upper|frequency|balance|strength|muscle|cali|pull)\b/.test(text)) {
+    lines.push(`Your history still points to roughly ${formatNumber(profile.observedLowerPerWeek)} lower and ${formatNumber(profile.observedUpperPerWeek)} upper touches per week. That is why the plan keeps two lower and two upper exposures when the week allows it.`);
+  }
+
+  if (/\b(goal|priority|priorities|focus|matter)\b/.test(text) || !lines.length) {
+    const priorityLead = goal
+      ? `Your current priority is ${goal.replace(/[.?!]\s*$/, "")}.`
+      : "The best move is the next session that keeps the week coherent.";
+    const nextMove = primaryGuidance?.nextBestOption || activeBlockSuggestion() || tiredDaySuggestion(fatiguedAreas);
+    lines.push(`${priorityLead} ${nextMove}`);
+  }
+
+  return uniqueValues(lines).slice(0, 3).join(" ");
+}
+
+function scrollCoachChatThreadToBottom() {
+  refs.coachChatThread.scrollTop = refs.coachChatThread.scrollHeight;
+}
+
+function renderCoachChatPage() {
+  const chat = coachChatState();
+
+  if (document.activeElement !== refs.coachChatGoal) {
+    refs.coachChatGoal.value = chat.goal || "";
+  }
+
+  renderCoachChatSummary();
+  renderCoachChatPrompts();
+  refs.coachChatThread.innerHTML = chat.messages.length
+    ? chat.messages.map((message) => `
+      <article class="coach-chat-message ${message.role === "user" ? "is-user" : ""}">
+        <div class="coach-chat-role">${message.role === "user" ? "You" : "Coach"}</div>
+        <div class="coach-chat-text">${escapeHtml(message.text)}</div>
+      </article>
+    `).join("")
+    : `<div class="coach-chat-empty helper-text">Ask about today, the week, your goal, your lower / upper balance, or how your body read should change the plan.</div>`;
+
+  scrollCoachChatThreadToBottom();
+}
+
+function submitCoachChatMessage(prompt = refs.coachChatInput?.value || "") {
+  const text = String(prompt || "").trim();
+  if (!text) {
+    return;
+  }
+
+  pushCoachChatMessage("user", text);
+  pushCoachChatMessage("assistant", buildCoachChatReply(text));
+  persistState();
+  refs.coachChatInput.value = "";
+  renderCoachChatPage();
+}
+
+function clearCoachChatConversation() {
+  coachChatState().messages = [];
+  persistState();
+  refs.coachChatInput.value = "";
+  renderCoachChatPage();
+  showToast("Coach chat cleared");
+}
+
 function buildSummary() {
   const workouts = [...state.workouts].sort((a, b) => compareDates(b.date, a.date));
   const lastSeven = workouts.filter((workout) => daysAgo(workout.date) <= 6);
@@ -6344,6 +7020,15 @@ function buildSurfFirstCoachGuidance({
       : "If the waves are worth it, surf and move the land session rather than forcing both."
   });
 
+  if (today.index === 1) {
+    cards.push({
+      emphasis: "mixed",
+      title: "Cali days work better dense",
+      summary: "For the cali touch, the win condition is a lot of good reps and honest density, not long rests and dragged-out bodybuilding pacing.",
+      nextBestOption: "Bare tag en masse reps. Volume over pauser. Keep it faster and more efficient for what you actually need."
+    });
+  }
+
   if (strategy.useLowerSupportReset && lowerStrengthTouches < strategy.lowerSessions) {
     cards.push({
       emphasis: "strength",
@@ -6376,15 +7061,15 @@ function buildSurfFirstCoachGuidance({
   if (qualityRuns < strategy.qualityRuns) {
     cards.push({
       emphasis: "endurance",
-      title: strategy.qualityRuns > 1 ? "Run shape still wants two sharp touches" : "Protect the one run touch that matters",
+      title: strategy.qualityRuns > 1 ? "Speed belongs later in the week" : "Protect the later-week sharp run",
       summary: strategy.qualityRuns > 1
-        ? "Your recent pattern can still support two sharper run touches on flatter or lower-value surf weeks. Easy volume stays optional."
-        : "One quality run is the minimum anchor for the engine in this base. Protect it before adding random extra gym work.",
+        ? "Your recent pattern can still support sharper run work on flatter or lower-value surf weeks, but it lands better later in the week than close to heavy lower-body work."
+        : "The week now holds the steadier long run earlier and protects the sharper run later, instead of forcing speed too close to the main lower day.",
       nextBestOption: qualityRuns === 0
-        ? "If the surf is flat or average, schedule intervals or a tempo run before adding another gym session."
+        ? "If the surf is flat or average, keep the steady long run earlier and use the later-week slot for intervals or a short tempo before you add more gym work."
         : (strategy.qualityRuns > 1
-          ? "You already have one quality run. Keep the second touch sharp and let the easy run stay optional."
-          : "You already have the anchor run. Keep everything else light enough that the sharp work still lands well.")
+          ? "You already have one sharp touch. Keep the later one short and snappy, and let the easy volume stay optional."
+          : "You already have the sharp run in. Keep the rest of the week light enough that it still feels high quality.")
     });
   } else if (lowEnergyDay && easyRuns > 0) {
     cards.push({
@@ -6881,15 +7566,17 @@ function normalizeExerciseSetLog(values = {}, { fallbackReps = "", rowType = "ma
     weightValue: normalizeSelectNumber(values.weightValue),
     weight: normalizeSelectNumber(values.weight),
     reps: normalizeSelectNumber(values.reps),
+    effortPercent: normalizeSelectNumber(values.effortPercent),
     setSeconds: normalizeSelectNumber(values.setSeconds),
     restSeconds: normalizeSelectNumber(values.restSeconds)
   };
 }
 
-function buildDefaultExerciseSetDrafts(targetSets, defaultWeight = null, fallbackReps = "", defaultSetSeconds = null, defaultRestSeconds = null) {
+function buildDefaultExerciseSetDrafts(targetSets, defaultWeight = null, fallbackReps = "", defaultSetSeconds = null, defaultRestSeconds = null, defaultEffortPercent = null) {
   const normalizedDefaultWeight = normalizeSelectNumber(defaultWeight);
   const normalizedSetSeconds = normalizeSelectNumber(defaultSetSeconds);
   const normalizedRestSeconds = normalizeSelectNumber(defaultRestSeconds);
+  const normalizedEffortPercent = normalizeSelectNumber(defaultEffortPercent);
   return Array.from({ length: Math.max(1, toNumber(targetSets) || 1) }, (_, index) => normalizeExerciseSetLog({
     id: uid(),
     rowType: "main",
@@ -6897,24 +7584,29 @@ function buildDefaultExerciseSetDrafts(targetSets, defaultWeight = null, fallbac
     weightMode: "same",
     weight: normalizedDefaultWeight,
     reps: null,
+    effortPercent: normalizedEffortPercent,
     setSeconds: normalizedSetSeconds,
     restSeconds: normalizedRestSeconds
   }, { fallbackReps }));
 }
 
-function buildExerciseSetDraftsFromTemplate(exercise = {}, { defaultWeight = null, defaultSetSeconds = null, defaultRestSeconds = null } = {}) {
+function buildExerciseSetDraftsFromTemplate(exercise = {}, { defaultWeight = null, defaultSetSeconds = null, defaultRestSeconds = null, defaultEffortPercent = null } = {}) {
   const resolvedSetSeconds = normalizeSelectNumber(defaultSetSeconds)
     ?? normalizeSelectNumber(exercise.targetSetSeconds)
     ?? inferSetSecondsFromExercise(exercise);
   const resolvedRestSeconds = normalizeSelectNumber(defaultRestSeconds)
     ?? normalizeSelectNumber(exercise.targetRestSeconds)
     ?? 0;
+  const resolvedEffortPercent = normalizeSelectNumber(defaultEffortPercent)
+    ?? normalizeSelectNumber(exercise.targetEffortPercent)
+    ?? null;
   const mainRows = buildDefaultExerciseSetDrafts(
     exercise.targetSets,
     defaultWeight,
     exercise.targetReps || String(exercise.targetLogReps || ""),
     resolvedSetSeconds,
-    resolvedRestSeconds
+    resolvedRestSeconds,
+    resolvedEffortPercent
   );
   if (!exercise.afterSetTemplates?.length && !exercise.extraSetTemplates?.length) {
     return mainRows;
@@ -6933,6 +7625,7 @@ function buildExerciseSetDraftsFromTemplate(exercise = {}, { defaultWeight = nul
         weightValue: template.weightValue,
         weight: resolveSetTemplateAutoWeight(template, defaultWeight),
         reps: null,
+        effortPercent: resolvedEffortPercent,
         setSeconds: resolvedSetSeconds,
         restSeconds: resolvedRestSeconds
       }, { rowType: "after-each" }));
@@ -6947,6 +7640,7 @@ function buildExerciseSetDraftsFromTemplate(exercise = {}, { defaultWeight = nul
       weightValue: template.weightValue,
       weight: resolveSetTemplateAutoWeight(template, defaultWeight),
       reps: null,
+      effortPercent: resolvedEffortPercent,
       setSeconds: resolvedSetSeconds,
       restSeconds: resolvedRestSeconds
     }, { rowType: "extra" }));
@@ -6969,6 +7663,7 @@ function getExerciseSetLogs(entry, { fallbackReps = "" } = {}) {
       weightMode: "same",
       weight: entry.keyWeight ?? null,
       reps: entry.reps ?? null,
+      effortPercent: entry.effortPercent ?? null,
       setSeconds: entry.setSeconds ?? null,
       restSeconds: entry.restSeconds ?? null
     }, { fallbackReps })];
@@ -6997,11 +7692,13 @@ function buildResolvedExerciseSetRows(setLogs = [], {
   targetReps = "",
   defaultWeight = null,
   defaultSetSeconds = null,
-  defaultRestSeconds = null
+  defaultRestSeconds = null,
+  defaultEffortPercent = null
 } = {}) {
   const normalizedDefaultWeight = normalizeSelectNumber(defaultWeight);
   const normalizedDefaultSetSeconds = normalizeSelectNumber(defaultSetSeconds);
   const normalizedDefaultRestSeconds = normalizeSelectNumber(defaultRestSeconds);
+  const normalizedDefaultEffortPercent = normalizeSelectNumber(defaultEffortPercent);
   const rows = setLogs.length
     ? setLogs.map((setLog) => {
       const normalizedSetLog = normalizeExerciseSetLog(setLog, {
@@ -7012,7 +7709,7 @@ function buildResolvedExerciseSetRows(setLogs = [], {
         weight: normalizedSetLog.weight ?? resolveSetTemplateAutoWeight(normalizedSetLog, normalizedDefaultWeight)
       };
     })
-    : buildDefaultExerciseSetDrafts(1, normalizedDefaultWeight, targetReps);
+    : buildDefaultExerciseSetDrafts(1, normalizedDefaultWeight, targetReps, normalizedDefaultSetSeconds, normalizedDefaultRestSeconds, normalizedDefaultEffortPercent);
   let extraCount = 0;
   let followupCount = 0;
 
@@ -7039,6 +7736,7 @@ function buildResolvedExerciseSetRows(setLogs = [], {
       meta,
       placeholderReps,
       showFollowupButton: setLog.rowType === "main",
+      effortPercent: normalizeSelectNumber(setLog.effortPercent) ?? normalizedDefaultEffortPercent,
       setSeconds: normalizeSelectNumber(setLog.setSeconds) ?? normalizedDefaultSetSeconds,
       restSeconds: normalizeSelectNumber(setLog.restSeconds) ?? normalizedDefaultRestSeconds
     };
@@ -7147,19 +7845,20 @@ function calculateElapsedPhaseTypeSeconds(sequence = {}, elapsedSeconds = 0, pha
   return total;
 }
 
-function buildExerciseSetRowsMarkup(setLogs = [], targetReps = "", defaultWeight = null, defaultSetSeconds = null, defaultRestSeconds = null) {
+function buildExerciseSetRowsMarkup(setLogs = [], targetReps = "", defaultWeight = null, defaultSetSeconds = null, defaultRestSeconds = null, defaultEffortPercent = null) {
   const rows = buildResolvedExerciseSetRows(setLogs, {
     targetReps,
     defaultWeight,
     defaultSetSeconds,
-    defaultRestSeconds
+    defaultRestSeconds,
+    defaultEffortPercent
   });
 
   return rows.map((setLog) => {
     const placeholderReps = setLog.placeholderReps || (setLog.rowType === "main" ? targetReps : "");
 
     return `
-    <article class="exercise-set-row ${setLog.rowType === "after-each" ? "is-followup" : ""} ${setLog.rowType === "extra" ? "is-extra" : ""}" data-set-row data-set-id="${escapeAttribute(setLog.id || "")}" data-row-type="${escapeAttribute(setLog.rowType || "main")}" data-set-index="${escapeAttribute(setLog.setIndex ?? "")}" data-parent-set-index="${escapeAttribute(setLog.parentSetIndex ?? "")}" data-template-label="${escapeAttribute(setLog.templateLabel || "")}" data-placeholder-reps="${escapeAttribute(placeholderReps)}" data-weight-mode="${escapeAttribute(setLog.weightMode || "same")}" data-weight-value="${escapeAttribute(setLog.weightValue ?? "")}" data-default-set-seconds="${escapeAttribute(setLog.setSeconds ?? "")}" data-default-rest-seconds="${escapeAttribute(setLog.restSeconds ?? "")}">
+    <article class="exercise-set-row ${setLog.rowType === "after-each" ? "is-followup" : ""} ${setLog.rowType === "extra" ? "is-extra" : ""}" data-set-row data-set-id="${escapeAttribute(setLog.id || "")}" data-row-type="${escapeAttribute(setLog.rowType || "main")}" data-set-index="${escapeAttribute(setLog.setIndex ?? "")}" data-parent-set-index="${escapeAttribute(setLog.parentSetIndex ?? "")}" data-template-label="${escapeAttribute(setLog.templateLabel || "")}" data-placeholder-reps="${escapeAttribute(placeholderReps)}" data-weight-mode="${escapeAttribute(setLog.weightMode || "same")}" data-weight-value="${escapeAttribute(setLog.weightValue ?? "")}" data-default-set-seconds="${escapeAttribute(setLog.setSeconds ?? "")}" data-default-rest-seconds="${escapeAttribute(setLog.restSeconds ?? "")}" data-default-effort-percent="${escapeAttribute(setLog.effortPercent ?? "")}">
       <div class="exercise-set-top">
         <div>
           <div class="exercise-set-label">${escapeHtml(setLog.label)}</div>
@@ -7173,18 +7872,32 @@ function buildExerciseSetRowsMarkup(setLogs = [], targetReps = "", defaultWeight
       <div class="field-grid two-up">
         <label class="field">
           <span>Set weight</span>
-          <input type="number" inputmode="decimal" step="0.5" data-set-weight value="${setLog.weight ?? ""}">
+          <select class="roller-select" data-set-weight>
+            <option value="">Choose</option>
+            ${buildExerciseWeightOptionsMarkup(setLog.weight ?? "", defaultWeight)}
+          </select>
         </label>
 
         <label class="field">
           <span>Set reps</span>
-          <input type="number" inputmode="numeric" step="1" data-set-reps value="${setLog.reps ?? ""}" placeholder="${escapeAttribute(placeholderReps)}">
+          <select class="roller-select" data-set-reps>
+            <option value="">Choose</option>
+            ${buildExerciseRepsOptionsMarkup(setLog.reps ?? "", placeholderReps)}
+          </select>
         </label>
       </div>
       <div class="field-grid two-up">
         <label class="field">
+          <span>Set effort</span>
+          <select class="roller-select" data-set-effort-percent>
+            <option value="">Choose</option>
+            ${buildExerciseEffortOptionsMarkup(setLog.effortPercent ?? "")}
+          </select>
+        </label>
+
+        <label class="field">
           <span>Set time</span>
-          <select data-set-log-seconds>
+          <select class="roller-select" data-set-log-seconds>
             <option value="">Choose</option>
             ${buildExerciseSetTimeOptionsMarkup(setLog.setSeconds)}
           </select>
@@ -7192,7 +7905,7 @@ function buildExerciseSetRowsMarkup(setLogs = [], targetReps = "", defaultWeight
 
         <label class="field">
           <span>Break after</span>
-          <select data-set-log-rest-seconds>
+          <select class="roller-select" data-set-log-rest-seconds>
             <option value="">Choose</option>
             ${buildExerciseRestOptionsMarkup(setLog.restSeconds)}
           </select>
@@ -7405,6 +8118,47 @@ function applySuggestedWeightToSetLogs(setLogs = [], {
   });
 }
 
+function syncSetEffortInputs(container, {
+  nextEffortPercent = null,
+  previousEffortPercent = null
+} = {}) {
+  if (!container) {
+    return;
+  }
+
+  const normalizedNextEffortPercent = normalizeSelectNumber(nextEffortPercent);
+  const normalizedPreviousEffortPercent = normalizeSelectNumber(previousEffortPercent);
+  [...container.querySelectorAll("[data-set-row]")].forEach((row) => {
+    const input = row.querySelector("[data-set-effort-percent]");
+    if (!input) {
+      return;
+    }
+
+    const currentEffortPercent = normalizeSelectNumber(input.value);
+    const defaultEffortPercent = normalizeSelectNumber(row.dataset.defaultEffortPercent);
+    const shouldReplace = currentEffortPercent == null
+      || (
+        normalizedPreviousEffortPercent != null
+        && currentEffortPercent != null
+        && Math.abs(currentEffortPercent - normalizedPreviousEffortPercent) < 0.001
+      )
+      || (
+        defaultEffortPercent != null
+        && currentEffortPercent != null
+        && Math.abs(currentEffortPercent - defaultEffortPercent) < 0.001
+      );
+
+    row.dataset.defaultEffortPercent = normalizedNextEffortPercent != null ? String(normalizedNextEffortPercent) : "";
+    input.innerHTML = `
+      <option value="">Choose</option>
+      ${buildExerciseEffortOptionsMarkup(shouldReplace ? normalizedNextEffortPercent : currentEffortPercent)}
+    `;
+    input.value = shouldReplace
+      ? (normalizedNextEffortPercent != null ? String(normalizedNextEffortPercent) : "")
+      : (currentEffortPercent != null ? String(currentEffortPercent) : "");
+  });
+}
+
 function syncSetWeightInputs(container, {
   nextWeight = null,
   previousWeight = null
@@ -7502,6 +8256,14 @@ function currentExerciseCardSetWeight(card) {
   }
 
   return card.querySelector("[data-lift-weight]")?.value || card.dataset.defaultSetWeight || "";
+}
+
+function currentExerciseCardEffortPercent(card) {
+  if (!card) {
+    return "";
+  }
+
+  return card.querySelector("[data-effort-percent]")?.value || card.dataset.defaultEffortPercent || "";
 }
 
 function currentExerciseCardSetSeconds(card) {
@@ -7793,7 +8555,8 @@ function appendExerciseSetRow(container, {
   targetReps = "",
   defaultWeight = null,
   defaultSetSeconds = null,
-  defaultRestSeconds = null
+  defaultRestSeconds = null,
+  defaultEffortPercent = null
 } = {}) {
   if (!container) {
     return;
@@ -7805,11 +8568,12 @@ function appendExerciseSetRow(container, {
     weightMode: "same",
     weight: normalizeSelectNumber(defaultWeight),
     reps: null,
+    effortPercent: normalizeSelectNumber(defaultEffortPercent),
     setSeconds: normalizeSelectNumber(defaultSetSeconds),
     restSeconds: normalizeSelectNumber(defaultRestSeconds)
   }, {
     rowType: "extra"
-  })], targetReps, defaultWeight, defaultSetSeconds, defaultRestSeconds));
+  })], targetReps, defaultWeight, defaultSetSeconds, defaultRestSeconds, defaultEffortPercent));
   renumberExerciseSetRows(container);
 }
 
@@ -7864,7 +8628,8 @@ function renumberExerciseSetRows(container) {
 function appendExerciseFollowupRow(row, {
   defaultWeight = null,
   defaultSetSeconds = null,
-  defaultRestSeconds = null
+  defaultRestSeconds = null,
+  defaultEffortPercent = null
 } = {}) {
   const container = row?.closest("[data-set-list]");
   if (!row || !container) {
@@ -7893,11 +8658,12 @@ function appendExerciseFollowupRow(row, {
     weightMode: "same",
     weight: normalizeSelectNumber(defaultWeight),
     reps: null,
+    effortPercent: normalizeSelectNumber(defaultEffortPercent),
     setSeconds: normalizeSelectNumber(defaultSetSeconds),
     restSeconds: normalizeSelectNumber(defaultRestSeconds)
   }, {
     rowType: "after-each"
-  })], "", defaultWeight, defaultSetSeconds, defaultRestSeconds));
+  })], "", defaultWeight, defaultSetSeconds, defaultRestSeconds, defaultEffortPercent));
   renumberExerciseSetRows(container);
 }
 
@@ -8809,26 +9575,7 @@ function countExercisePersonalBests(exerciseLogs = [], { excludeWorkoutId = null
 }
 
 function getPreviousExerciseEntry(exerciseName, { excludeWorkoutId = null } = {}) {
-  for (const workout of [...state.workouts].sort((a, b) => compareDates(b.date, a.date))) {
-    if (excludeWorkoutId && workout.id === excludeWorkoutId) {
-      continue;
-    }
-
-    for (const entry of workout.exerciseLogs || []) {
-      if (entry.name?.toLowerCase() !== exerciseName.toLowerCase()) {
-        continue;
-      }
-
-      return {
-        ...entry,
-        workoutId: workout.id,
-        workoutDate: workout.date,
-        workoutTitle: workout.title
-      };
-    }
-  }
-
-  return null;
+  return getPreviousExerciseEntryFromWorkouts(exerciseName, state.workouts, { excludeWorkoutId });
 }
 
 function getExerciseHistory(exerciseName, { limit = 4 } = {}) {
@@ -9039,13 +9786,36 @@ function emphasisClass(emphasis) {
   return `emphasis-${emphasis}`;
 }
 
+function normalizeCoachChatMessage(message = {}) {
+  const text = String(message.text || "").trim();
+  if (!text) {
+    return null;
+  }
+
+  return {
+    id: message.id || uid(),
+    role: message.role === "assistant" ? "assistant" : "user",
+    text
+  };
+}
+
+function normalizeCoachChatState(rawChat = {}, fallbackChat = createCoachChatState()) {
+  return {
+    goal: typeof rawChat?.goal === "string" ? rawChat.goal : fallbackChat.goal,
+    messages: (Array.isArray(rawChat?.messages) ? rawChat.messages : fallbackChat.messages)
+      .map((message) => normalizeCoachChatMessage(message))
+      .filter(Boolean)
+      .slice(-30)
+  };
+}
+
 function normalizeState(raw) {
   const fallback = sampleState();
-  const routines = ensureStarterLegDayRoutine(Array.isArray(raw?.routines) ? raw.routines : fallback.routines)
+  const workouts = Array.isArray(raw?.workouts) ? raw.workouts : fallback.workouts;
+  const routines = ensureSystemStarterRoutines(Array.isArray(raw?.routines) ? raw.routines : fallback.routines, workouts)
     .map((routine) => normalizeRoutineRecord(routine));
   const blocks = (Array.isArray(raw?.blocks) ? raw.blocks : fallback.blocks)
     .map((block) => normalizeBlockRecord(block));
-  const workouts = Array.isArray(raw?.workouts) ? raw.workouts : fallback.workouts;
   const bodyCheckIns = Array.isArray(raw?.bodyCheckIns) ? raw.bodyCheckIns : fallback.bodyCheckIns;
   const requestedActiveBlockId = typeof raw?.activeBlockId === "string" ? raw.activeBlockId : null;
   const activeBlockId = requestedActiveBlockId && blocks.some((block) => block.id === requestedActiveBlockId)
@@ -9062,7 +9832,8 @@ function normalizeState(raw) {
     workouts,
     bodyCheckIns,
     activeBlockId,
-    planner
+    planner,
+    coachChat: normalizeCoachChatState(raw?.coachChat, fallback.coachChat)
   };
 }
 
@@ -9141,7 +9912,7 @@ function migrateLegacyLogs(legacyLogs) {
 }
 
 function sampleState() {
-  const starterLegDay = buildStarterLegDayRoutine();
+  const systemRoutines = buildSystemStarterRoutines();
   const lowerBodyId = uid();
   const upperBodyId = uid();
   const bikeId = uid();
@@ -9151,7 +9922,7 @@ function sampleState() {
 
   return {
     routines: [
-      starterLegDay,
+      ...systemRoutines,
       {
         id: lowerBodyId,
         name: "Lower Body Power",
@@ -9402,7 +10173,8 @@ function sampleState() {
         notes: "Upper body is a bit cooked, legs are decent."
       }
     ],
-    planner: defaultPlannerState()
+    planner: defaultPlannerState(),
+    coachChat: createCoachChatState()
   };
 }
 
