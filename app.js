@@ -180,6 +180,7 @@ const refs = {
   photoImportSummary: document.querySelector("#photo-import-summary"),
   photoImportText: document.querySelector("#photo-import-text"),
   photoImportApply: document.querySelector("#photo-import-apply"),
+  photoImportStart: document.querySelector("#photo-import-start"),
   routineLogSelect: document.querySelector("#routine-log-select"),
   routineLogDate: document.querySelector("#routine-log-date"),
   routineLogDuration: document.querySelector("#routine-log-duration"),
@@ -274,7 +275,6 @@ const refs = {
   bodyHistory: document.querySelector("#body-history"),
   coachChatGoal: document.querySelector("#coach-chat-goal"),
   coachChatSummary: document.querySelector("#coach-chat-summary"),
-  coachChatPrompts: document.querySelector("#coach-chat-prompts"),
   coachChatThread: document.querySelector("#coach-chat-thread"),
   coachChatInput: document.querySelector("#coach-chat-input"),
   coachChatSend: document.querySelector("#coach-chat-send"),
@@ -494,6 +494,7 @@ function wireEvents() {
   refs.routineExerciseFields.addEventListener("click", (event) => {
     const addSetButton = event.target.closest("[data-add-set]");
     const addFollowupButton = event.target.closest("[data-add-followup-set]");
+    const addLighterFollowupButton = event.target.closest("[data-add-lighter-followup-set]");
     const removeSetButton = event.target.closest("[data-remove-set]");
     const togglePanelButton = event.target.closest("[data-toggle-exercise-panel]");
 
@@ -524,10 +525,27 @@ function wireEvents() {
       const row = addFollowupButton.closest("[data-set-row]");
       const card = addFollowupButton.closest("[data-exercise-name]");
       appendExerciseFollowupRow(row, {
-        defaultWeight: currentExerciseCardSetWeight(card),
+        defaultWeight: currentSetRowWeight(row, currentExerciseCardSetWeight(card)),
         defaultSetSeconds: currentExerciseCardSetSeconds(card),
         defaultRestSeconds: currentExerciseCardRestSeconds(card),
         defaultEffortPercent: currentExerciseCardEffortPercent(card)
+      });
+      return;
+    }
+
+    if (addLighterFollowupButton) {
+      const row = addLighterFollowupButton.closest("[data-set-row]");
+      const card = addLighterFollowupButton.closest("[data-exercise-name]");
+      const baseWeight = currentSetRowWeight(row, currentExerciseCardSetWeight(card));
+      appendExerciseFollowupRow(row, {
+        defaultWeight: baseWeight,
+        defaultSetSeconds: currentExerciseCardSetSeconds(card),
+        defaultRestSeconds: currentExerciseCardRestSeconds(card),
+        defaultEffortPercent: currentExerciseCardEffortPercent(card),
+        templateLabel: "Lighter follow-up",
+        weightMode: "fixed",
+        weightValue: lighterFollowupWeight(baseWeight),
+        bridgeRestSeconds: 30
       });
       return;
     }
@@ -560,6 +578,7 @@ function wireEvents() {
   refs.photoImportClear.addEventListener("click", clearPhotoImport);
   refs.photoImportText.addEventListener("input", handlePhotoImportTextInput);
   refs.photoImportApply.addEventListener("click", applyPhotoImportDraft);
+  refs.photoImportStart.addEventListener("click", startPhotoImportWorkoutFlow);
   refs.startGuidedWorkout.addEventListener("click", openGuidedWorkout);
   refs.addRoutineExercise.addEventListener("click", () => addExerciseToCurrentSession());
   refs.cancelQuickWorkoutEdit.addEventListener("click", cancelWorkoutEdit);
@@ -849,7 +868,6 @@ function wireEvents() {
     coachChatState().goal = refs.coachChatGoal.value;
     persistState();
     renderCoachChatSummary();
-    renderCoachChatPrompts();
   });
   refs.coachChatSend.addEventListener("click", () => submitCoachChatMessage());
   refs.coachChatInput.addEventListener("keydown", (event) => {
@@ -857,14 +875,6 @@ function wireEvents() {
       event.preventDefault();
       submitCoachChatMessage();
     }
-  });
-  refs.coachChatPrompts.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-coach-chat-prompt]");
-    if (!button) {
-      return;
-    }
-
-    submitCoachChatMessage(button.dataset.coachChatPrompt || "");
   });
   refs.coachChatClear.addEventListener("click", clearCoachChatConversation);
 
@@ -1511,7 +1521,7 @@ function setRoutineLogTemplate(template) {
   refs.routineLogTemplateNote.textContent = template.sourceType === "planned"
     ? `Tracking ${template.title} from ${template.sourceLabel}. Exercise history stays shared by exercise name across weeks, routines, and blocks.`
     : template.sourceType === "photo"
-      ? "Imported from handwritten notes. Review the OCR-filled sets, then save so the workout becomes part of your progress history."
+      ? "Imported from handwritten notes or a coffee-planned workout. Review the OCR-filled parts, or start the workout flow directly if the exercise list looks right."
       : "";
   refs.routineLogTemplateNote.classList.toggle("hidden", template.sourceType === "routine");
   refs.routineLogSelect.disabled = template.sourceType !== "routine";
@@ -2913,6 +2923,7 @@ function handleGuidedWorkoutClick(event) {
   const panelButton = event.target.closest("[data-guided-panel]");
   const removeSetButton = event.target.closest("[data-remove-set]");
   const addFollowupButton = event.target.closest("[data-add-followup-set]");
+  const addLighterFollowupButton = event.target.closest("[data-add-lighter-followup-set]");
 
   if (panelButton) {
     const panelName = panelButton.dataset.guidedPanel;
@@ -2929,11 +2940,30 @@ function handleGuidedWorkoutClick(event) {
 
   if (addFollowupButton) {
     const row = addFollowupButton.closest("[data-set-row]");
+    const fallbackWeight = normalizeSelectNumber(currentGuidedWorkoutDraft()?.weightValue) ?? currentGuidedWorkoutDraft()?.targetWeight;
     appendExerciseFollowupRow(row, {
-      defaultWeight: normalizeSelectNumber(currentGuidedWorkoutDraft()?.weightValue) ?? currentGuidedWorkoutDraft()?.targetWeight,
+      defaultWeight: currentSetRowWeight(row, fallbackWeight),
       defaultSetSeconds: guidedExerciseSetTargetSeconds(currentGuidedWorkoutDraft()),
       defaultRestSeconds: guidedExerciseRestTargetSeconds(currentGuidedWorkoutDraft()),
       defaultEffortPercent: normalizeSelectNumber(currentGuidedWorkoutDraft()?.effortPercentValue) ?? currentGuidedWorkoutDraft()?.targetEffortPercent
+    });
+    syncGuidedSetLogsFromPanel();
+    return;
+  }
+
+  if (addLighterFollowupButton) {
+    const row = addLighterFollowupButton.closest("[data-set-row]");
+    const fallbackWeight = normalizeSelectNumber(currentGuidedWorkoutDraft()?.weightValue) ?? currentGuidedWorkoutDraft()?.targetWeight;
+    const baseWeight = currentSetRowWeight(row, fallbackWeight);
+    appendExerciseFollowupRow(row, {
+      defaultWeight: baseWeight,
+      defaultSetSeconds: guidedExerciseSetTargetSeconds(currentGuidedWorkoutDraft()),
+      defaultRestSeconds: guidedExerciseRestTargetSeconds(currentGuidedWorkoutDraft()),
+      defaultEffortPercent: normalizeSelectNumber(currentGuidedWorkoutDraft()?.effortPercentValue) ?? currentGuidedWorkoutDraft()?.targetEffortPercent,
+      templateLabel: "Lighter follow-up",
+      weightMode: "fixed",
+      weightValue: lighterFollowupWeight(baseWeight),
+      bridgeRestSeconds: 30
     });
     syncGuidedSetLogsFromPanel();
     return;
@@ -3193,6 +3223,7 @@ function renderLogMode() {
 function renderPhotoImportUI() {
   const hasContent = Boolean(ui.photoImport.imageUrl || ui.photoImport.recognizedText || ui.photoImport.processing);
   const canApply = Boolean(ui.photoImport.draft && !ui.photoImport.processing);
+  const canStart = photoImportDraftCanStartGuided(ui.photoImport.draft) && !ui.photoImport.processing;
   const summary = ui.photoImport.draft;
 
   refs.photoImportClear.classList.toggle("hidden", !hasContent);
@@ -3214,6 +3245,9 @@ function renderPhotoImportUI() {
   refs.photoImportApply.textContent = summary
     ? (summary.importMode === "routine" ? "Load into strength log" : "Load into quick log")
     : "Use in log";
+  refs.photoImportStart.disabled = !canStart;
+  refs.photoImportStart.classList.toggle("hidden", !summary);
+  refs.photoImportStart.textContent = canStart ? "Start workout flow" : "Start workout flow";
 
   refs.photoImportSummary.innerHTML = summary
     ? buildPhotoImportSummaryMarkup(summary)
@@ -3725,7 +3759,7 @@ function buildRoutineLogExerciseCardMarkup(exercise, sessionKind) {
       </label>
 
       <div class="exercise-panel hidden" data-exercise-panel="details">
-        <div class="helper-text">Leave the workout running and fill these rollers in whenever the exercise is done.</div>
+        <div class="helper-text">Leave the workout running and fill these rollers in whenever the exercise is done. Use Superset or Lighter when you want a quick follow-up set without rebuilding the whole exercise.</div>
         <div class="exercise-set-list" data-set-list>
           ${buildExerciseSetRowsMarkup(
           buildExerciseSetDraftsFromTemplate(exercise, {
@@ -3884,6 +3918,16 @@ function clearPhotoImport() {
   renderPhotoImportUI();
 }
 
+function photoImportDraftCanStartGuided(draft) {
+  return Boolean(
+    draft
+    && draft.importMode === "routine"
+    && draft.template
+    && Array.isArray(draft.template.exercises)
+    && draft.template.exercises.length
+  );
+}
+
 function applyPhotoImportDraft() {
   const draft = parseImportedWorkoutText(refs.photoImportText.value);
   if (!draft) {
@@ -3895,7 +3939,9 @@ function applyPhotoImportDraft() {
   }
 
   ui.photoImport.draft = draft;
-  ui.photoImport.status = "Loaded into the log below. Review the fields, then save it as a workout.";
+  ui.photoImport.status = photoImportDraftCanStartGuided(draft)
+    ? "Loaded into the log below. You can review it first or start the workout flow directly."
+    : "Loaded into the log below. Review the fields, then save it as a workout.";
   ui.photoImport.statusTone = "success";
 
   if (draft.importMode === "routine") {
@@ -3907,6 +3953,27 @@ function applyPhotoImportDraft() {
   }
 
   renderPhotoImportUI();
+}
+
+function startPhotoImportWorkoutFlow() {
+  const draft = parseImportedWorkoutText(refs.photoImportText.value);
+  if (!photoImportDraftCanStartGuided(draft)) {
+    ui.photoImport.draft = draft;
+    ui.photoImport.status = draft
+      ? "This scan can be loaded into the log, but it still needs more exercise structure before it can run as a workout flow."
+      : "The scan still needs a bit more cleanup before it can become a workout.";
+    ui.photoImport.statusTone = draft ? "" : "error";
+    renderPhotoImportUI();
+    showToast(draft ? "Add a bit more exercise structure to start the flow" : "Scan needs more cleanup");
+    return;
+  }
+
+  ui.photoImport.draft = draft;
+  ui.photoImport.status = "Workout flow started from the scanned program. You can still tweak the log below while you train.";
+  ui.photoImport.statusTone = "success";
+  loadImportedRoutineDraft(draft);
+  renderPhotoImportUI();
+  openGuidedWorkout();
 }
 
 function loadImportedQuickDraft(draft) {
@@ -4084,7 +4151,9 @@ function parseImportedWorkoutText(text) {
     return null;
   }
 
-  const strengthEntries = mergeImportedExerciseLogs(parseImportedStrengthExerciseLogs(lines));
+  const loggedStrengthEntries = mergeImportedExerciseLogs(parseImportedStrengthExerciseLogs(lines));
+  const plannedStrengthEntries = parseImportedPlannedStrengthExercises(lines, loggedStrengthEntries);
+  const strengthEntries = mergeImportedExerciseLogs([...loggedStrengthEntries, ...plannedStrengthEntries]);
   let kind = detectImportedWorkoutKind(cleanedText, lines, strengthEntries);
   if (strengthEntries.length && !["strength", "explosive", "functional"].includes(kind)) {
     kind = "strength";
@@ -4368,6 +4437,57 @@ function parseImportedStrengthExerciseLogs(lines) {
   });
 }
 
+function parseImportedPlannedStrengthExercises(lines, existingEntries = []) {
+  const existingNames = new Set(
+    (existingEntries || [])
+      .map((entry) => String(entry?.name || "").trim().toLowerCase())
+      .filter(Boolean)
+  );
+  const seenNames = new Set();
+
+  return lines.flatMap((line) => {
+    if (looksLikeWorkoutHeader(line) || looksLikeExerciseData(line)) {
+      return [];
+    }
+
+    const parsedLine = parseExerciseLineNameAndData(line);
+    const rawName = parsedLine?.namePart || (looksLikeExerciseLabel(line) ? line : "");
+    const cleanedName = sanitizeImportedExerciseLabel(rawName);
+    if (!cleanedName || !looksLikeExerciseLabel(cleanedName)) {
+      return [];
+    }
+
+    const name = canonicalizeImportedExerciseName(cleanedName);
+    const key = name.toLowerCase();
+    if (!key || existingNames.has(key) || seenNames.has(key)) {
+      return [];
+    }
+
+    seenNames.add(key);
+    return [{
+      id: uid(),
+      name,
+      keyWeight: null,
+      reps: null,
+      effort: null,
+      effortPercent: null,
+      note: "",
+      setSeconds: null,
+      restSeconds: null,
+      plannedRestSeconds: null,
+      setLogs: []
+    }];
+  });
+}
+
+function sanitizeImportedExerciseLabel(value) {
+  return String(value || "")
+    .replace(/^[\s\-–—*+•·]+/, "")
+    .replace(/[:\-–—]+$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function buildImportedExerciseBlocks(lines) {
   const blocks = [];
 
@@ -4441,9 +4561,18 @@ function looksLikeWorkoutHeader(line) {
     && normalized.split(/\s+/).length <= 6;
 }
 
+function looksLikeExerciseGroupHeader(line) {
+  const normalized = String(line || "").trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+
+  return /^(?:glutes?(?:\s*(?:&|and)\s*)?(?:ham(?:strings?)?|quads?)|ham(?:strings?)?(?:\s*(?:&|and)\s*)?glutes?|back(?:\s*(?:&|and)\s*)?(?:bi(?:ceps?)?|biceps)|(?:shoulders?|chest|breast)(?:\s*(?:&|and)\s*)?(?:tri(?:ceps?)?|triceps|chest|breast)|upper body(?:\s+all around|\s+combi)?|lower body|abs(?:\s*&\s*calisthenics)?)$/i.test(normalized);
+}
+
 function looksLikeExerciseLabel(line) {
   const normalized = String(line || "").trim();
-  if (!normalized || /\d/.test(normalized) || looksLikeWorkoutHeader(normalized)) {
+  if (!normalized || /\d/.test(normalized) || looksLikeWorkoutHeader(normalized) || looksLikeExerciseGroupHeader(normalized)) {
     return false;
   }
   if (/\b(?:post|pancakes|banana|yoghurt|yogurt|bowl|muesli|breakfast|lunch|dinner)\b/i.test(normalized)) {
@@ -4782,30 +4911,112 @@ function buildImportedRoutineTemplate(workout) {
     kind: workout.kind,
     notes: "Imported from handwritten notes",
     estimatedMinutes: workout.durationMinutes || defaultDurationForKind(workout.kind),
-    exercises: workout.exerciseLogs.map((entry) => {
-      const summary = summarizeExerciseLog(entry);
-      const repValues = (entry.setLogs || [])
-        .map((setLog) => normalizeSelectNumber(setLog.reps))
-        .filter((value) => value != null);
-      const targetReps = repValues.length
-        ? String(repValues.length > 1 && new Set(repValues).size > 1
-          ? `${Math.min(...repValues)}-${Math.max(...repValues)}`
-          : repValues[0])
-        : String(summary.reps || "");
-
-      return hydrateExerciseTemplate({
-        id: uid(),
-        name: entry.name,
-        targetSets: Math.max(1, entry.setLogs?.length || 1),
-        targetReps,
-        notes: entry.note || "",
-        targetLogReps: summary.reps,
-        targetEffortPercent: getExerciseEffortPercent(entry),
-        targetWeight: summary.keyWeight,
-        targetRestSeconds: entry.plannedRestSeconds || entry.restSeconds || null
-      }, workout.kind);
-    }),
+    exercises: workout.exerciseLogs.map((entry) => buildImportedTemplateExercise(entry, workout.kind)),
     sourceLabel: "Handwritten notes import"
+  };
+}
+
+function buildImportedTemplateExercise(entry, workoutKind = "strength") {
+  const summary = summarizeExerciseLog(entry);
+  const repValues = (entry?.setLogs || [])
+    .map((setLog) => normalizeSelectNumber(setLog.reps))
+    .filter((value) => value != null);
+  const targetRepsFromLogs = repValues.length
+    ? String(repValues.length > 1 && new Set(repValues).size > 1
+      ? `${Math.min(...repValues)}-${Math.max(...repValues)}`
+      : repValues[0])
+    : String(summary.reps || "");
+  const defaults = inferImportedTemplateDefaults(entry, workoutKind);
+
+  return hydrateExerciseTemplate({
+    id: uid(),
+    name: entry.name,
+    targetSets: Math.max(1, entry?.setLogs?.length || defaults.targetSets || 1),
+    targetReps: targetRepsFromLogs || defaults.targetReps,
+    notes: entry.note || "",
+    targetLogReps: summary.reps ?? defaults.targetLogReps,
+    targetEffortPercent: getExerciseEffortPercent(entry) ?? defaults.targetEffortPercent,
+    targetWeight: summary.keyWeight ?? entry.keyWeight ?? defaults.targetWeight ?? null,
+    targetRestSeconds: entry.plannedRestSeconds || entry.restSeconds || defaults.targetRestSeconds || null,
+    targetSetSeconds: entry.setSeconds ?? defaults.targetSetSeconds ?? null
+  }, workoutKind);
+}
+
+function inferImportedTemplateDefaults(entry, workoutKind = "strength") {
+  const name = String(entry?.name || "").toLowerCase();
+
+  if (/\b(?:weighted\s+plank|plank)\b/.test(name)) {
+    return {
+      targetSets: 3,
+      targetReps: "30-45 s",
+      targetSetSeconds: 40,
+      targetRestSeconds: 60
+    };
+  }
+
+  if (/\bdead\s*hang\b/.test(name)) {
+    return {
+      targetSets: 3,
+      targetReps: "20-40 s",
+      targetSetSeconds: 30,
+      targetRestSeconds: 60
+    };
+  }
+
+  if (/\b(?:flag|handstand|skill)\b/.test(name)) {
+    return {
+      targetSets: 3,
+      targetReps: "2-4 quality reps",
+      targetRestSeconds: 120
+    };
+  }
+
+  if (/\b(?:calf|curl|extension|raise|kickback|face pull|pushdown|triceps)\b/.test(name)) {
+    return {
+      targetSets: 3,
+      targetReps: "10-15",
+      targetLogReps: 12,
+      targetEffortPercent: 72,
+      targetRestSeconds: 60
+    };
+  }
+
+  if (/\b(?:lunge|split squat|step-up)\b/.test(name)) {
+    return {
+      targetSets: 3,
+      targetReps: "6-8 each",
+      targetLogReps: 6,
+      targetEffortPercent: 80,
+      targetRestSeconds: 90
+    };
+  }
+
+  if (/\b(?:pull-up|chin-up|dip)\b/.test(name)) {
+    return {
+      targetSets: 3,
+      targetReps: "4-8",
+      targetLogReps: 6,
+      targetEffortPercent: 82,
+      targetRestSeconds: 105
+    };
+  }
+
+  if (/\b(?:squat|deadlift|rdl|bench|press|row|leg press|hack squat|hip thrust)\b/.test(name)) {
+    return {
+      targetSets: 3,
+      targetReps: "6-8",
+      targetLogReps: 6,
+      targetEffortPercent: 80,
+      targetRestSeconds: 105
+    };
+  }
+
+  return {
+    targetSets: liftSessionKinds.has(workoutKind) ? 3 : 1,
+    targetReps: liftSessionKinds.has(workoutKind) ? "8-10" : "",
+    targetLogReps: liftSessionKinds.has(workoutKind) ? 8 : null,
+    targetEffortPercent: liftSessionKinds.has(workoutKind) ? 75 : null,
+    targetRestSeconds: liftSessionKinds.has(workoutKind) ? 75 : null
   };
 }
 
@@ -6612,88 +6823,30 @@ function buildCoachChatHistorySnapshot() {
   };
 }
 
-function coachChatPromptSuggestions() {
-  const goal = coachChatState().goal.toLowerCase();
-  const suggestions = [
-    "What should I do today?",
-    "How should I adjust this week?",
-    "I feel flat today. What is smartest?",
-    "Does this still fit my goal?"
-  ];
-
-  if (/\blong run|5k|run|race|pace|tempo|interval|ironman\b/.test(goal) || getActiveBlock()?.systemKey === SURF_FIRST_BLOCK_KEY) {
-    suggestions.push("How do I keep the long run in?");
-  }
-
-  if (/\bstrong|strength|lower|upper|muscle|cali|pull\b/.test(goal)) {
-    suggestions.push("Is my lower / upper split enough?");
-  }
-
-  if (getActiveBlock()?.systemKey === SURF_FIRST_BLOCK_KEY) {
-    suggestions.push("How should surf change this week?");
-  }
-
-  return uniqueValues(suggestions).slice(0, 5);
-}
-
-function buildCoachChatSummaryMarkup() {
+function buildCoachChatSummaryText() {
   const chat = coachChatState();
   const goal = chat.goal.trim();
   const summary = buildSummary();
   const latestCheckIn = latestBodyCheckIn();
   const plannerView = buildLogPlannerView();
-  const profile = buildTrainingHistoryProfile();
   const history = buildCoachChatHistorySnapshot();
-  const primaryGuidance = summary.guidance[0];
 
-  const cards = [
-    {
-      eyebrow: "Goal",
-      title: goal || "Set your main goal here",
-      detail: goal
-        ? "Replies will keep bending back toward this."
-        : "Example: keep the long run in, hold two lower days, and stay strong for surf."
-    },
-    {
-      eyebrow: "Today",
-      title: primaryGuidance ? primaryGuidance.title : "No live guidance yet",
-      detail: primaryGuidance
-        ? primaryGuidance.nextBestOption
-        : "Log a workout or body check-in and the coach will get more specific."
-    },
-    {
-      eyebrow: "Week",
-      title: plannerView?.summaryAction
-        ? `${plannerView.summaryAction.dayDisplay}: ${plannedSessionTitle(plannerView.summaryAction.session)}`
-        : (getActiveBlock()?.name || "No active block"),
-      detail: plannerView?.summaryText || activeBlockSuggestion() || "Add or activate a block to make weekly suggestions tighter."
-    },
-    {
-      eyebrow: "Pattern",
-      title: `${history.lowerTouches} lower • ${history.upperTouches} upper • ${history.runSessions.length} runs`,
-      detail: latestCheckIn
-        ? `Latest body read: sleep ${formatNumber(latestCheckIn.sleepHours)} h, energy ${latestCheckIn.energy}/5, soreness ${latestCheckIn.soreness}/5, loaded ${areaLabels(latestCheckIn.fatiguedAreas).toLowerCase()}.`
-        : `History still points to about ${formatNumber(profile.observedLowerPerWeek)} lower and ${formatNumber(profile.observedUpperPerWeek)} upper touches per week.`
-    }
+  const pieces = [
+    goal ? `Goal: ${goal}.` : "Add a goal if you want the chat to bias its answers.",
+    `I keep your last 7 days in mind: ${history.lowerTouches} lower, ${history.upperTouches} upper, ${history.runSessions.length} runs${history.longRuns ? `, ${history.longRuns} long run${history.longRuns === 1 ? "" : "s"}` : ""}.`,
+    latestCheckIn
+      ? `Latest body read: sleep ${formatNumber(latestCheckIn.sleepHours)} h, energy ${latestCheckIn.energy}/5, soreness ${latestCheckIn.soreness}/5, loaded ${areaLabels(latestCheckIn.fatiguedAreas).toLowerCase()}.`
+      : "No body check-in yet, so recovery guidance is based more on training pattern than body data.",
+    plannerView?.summaryAction
+      ? `Active week anchor: ${plannerView.summaryAction.dayDisplay} ${plannedSessionTitle(plannerView.summaryAction.session)}.`
+      : activeBlockSuggestion() || summary.guidance[0]?.nextBestOption || "No active week loaded yet."
   ];
 
-  return cards.map((card) => `
-    <article class="coach-context-pill">
-      <p class="eyebrow">${escapeHtml(card.eyebrow)}</p>
-      <div class="list-title">${escapeHtml(card.title)}</div>
-      <div class="helper-text">${escapeHtml(card.detail)}</div>
-    </article>
-  `).join("");
+  return pieces.join(" ");
 }
 
 function renderCoachChatSummary() {
-  refs.coachChatSummary.innerHTML = buildCoachChatSummaryMarkup();
-}
-
-function renderCoachChatPrompts() {
-  refs.coachChatPrompts.innerHTML = coachChatPromptSuggestions().map((prompt) => `
-    <button class="coach-chat-chip" type="button" data-coach-chat-prompt="${escapeAttribute(prompt)}">${escapeHtml(prompt)}</button>
-  `).join("");
+  refs.coachChatSummary.textContent = buildCoachChatSummaryText();
 }
 
 function pushCoachChatMessage(role, text) {
@@ -6722,17 +6875,20 @@ function buildCoachChatReply(prompt) {
   const plannerView = buildLogPlannerView();
   const profile = buildTrainingHistoryProfile();
   const history = buildCoachChatHistorySnapshot();
+  const recentMessages = chat.messages.slice(-4).map((message) => message.text.toLowerCase()).join(" ");
   const lines = [];
+  const tiredToday = latestCheckIn && (latestCheckIn.energy <= 2 || latestCheckIn.soreness >= 4 || latestCheckIn.sleepHours < 6.5);
 
-  if (/\b(today|now|do|session|train|feel|feeling|flat|tired|cooked|sore|recovery|recover|smartest)\b/.test(text)) {
+  if (/\b(today|now|do|session|train|feel|feeling|flat|tired|cooked|sore|recovery|recover|smartest)\b/.test(text) || /\b(today|feel|week)\b/.test(recentMessages)) {
     if (primaryGuidance?.nextBestOption) {
-      lines.push(goal
-        ? `With your goal of ${goal.replace(/[.?!]\s*$/, "")}, ${primaryGuidance.nextBestOption.charAt(0).toLowerCase()}${primaryGuidance.nextBestOption.slice(1)}`
-        : primaryGuidance.nextBestOption);
+      const goalLead = goal ? `With your goal of ${goal.replace(/[.?!]\s*$/, "")}, ` : "";
+      lines.push(`${goalLead}${primaryGuidance.nextBestOption}`);
     }
 
     if (fatiguedAreas.size) {
-      lines.push(bodyAreaRedirect(fatiguedAreas));
+      lines.push(tiredToday
+        ? `Because you marked ${areaLabels([...fatiguedAreas]).toLowerCase()}, I would keep today lower-cost rather than force the perfect version on paper.`
+        : bodyAreaRedirect(fatiguedAreas));
     }
   }
 
@@ -6748,7 +6904,7 @@ function buildCoachChatReply(prompt) {
 
   if (/\b(long run|run|5k|tempo|interval|speed)\b/.test(text)) {
     lines.push(history.longRuns
-      ? `You already have ${history.longRuns} long-run touch${history.longRuns === 1 ? "" : "es"} in the last 7 days, so the next run should either stay easy or stay short-and-sharp depending on how your legs feel.`
+      ? `You already have ${history.longRuns} long-run touch${history.longRuns === 1 ? "" : "es"} in the last 7 days, so I would only add more running if it helps the week instead of just adding load.`
       : "You do not need random extra run volume. Keep one real long run in the week, then protect the sharper speed touch later instead of stacking both close to heavy leg work.");
   }
 
@@ -6764,7 +6920,9 @@ function buildCoachChatReply(prompt) {
     lines.push(`${priorityLead} ${nextMove}`);
   }
 
-  return uniqueValues(lines).slice(0, 3).join(" ");
+  const answer = uniqueValues(lines).slice(0, 3).join(" ");
+  return answer
+    || "I am keeping your logged training, body reads, active week, and goal in mind. Ask me what to do today, whether something fits the week, or how to adjust when you feel off.";
 }
 
 function scrollCoachChatThreadToBottom() {
@@ -6779,7 +6937,6 @@ function renderCoachChatPage() {
   }
 
   renderCoachChatSummary();
-  renderCoachChatPrompts();
   refs.coachChatThread.innerHTML = chat.messages.length
     ? chat.messages.map((message) => `
       <article class="coach-chat-message ${message.role === "user" ? "is-user" : ""}">
@@ -6787,7 +6944,7 @@ function renderCoachChatPage() {
         <div class="coach-chat-text">${escapeHtml(message.text)}</div>
       </article>
     `).join("")
-    : `<div class="coach-chat-empty helper-text">Ask about today, the week, your goal, your lower / upper balance, or how your body read should change the plan.</div>`;
+    : `<div class="coach-chat-empty helper-text">Ask like normal. I keep your logged workouts, body check-ins, active week, and goal in mind.</div>`;
 
   scrollCoachChatThreadToBottom();
 }
@@ -7865,7 +8022,12 @@ function buildExerciseSetRowsMarkup(setLogs = [], targetReps = "", defaultWeight
           ${setLog.meta ? `<div class="exercise-set-meta">${escapeHtml(setLog.meta)}</div>` : ""}
         </div>
         <div class="exercise-set-actions">
-          ${setLog.showFollowupButton ? `<button class="button button-secondary compact" type="button" data-add-followup-set>Superset</button>` : ""}
+          ${setLog.showFollowupButton ? `
+            <div class="exercise-set-followup-actions">
+              <button class="button button-secondary compact" type="button" data-add-followup-set>Superset</button>
+              <button class="button button-secondary compact" type="button" data-add-lighter-followup-set>Lighter</button>
+            </div>
+          ` : ""}
           <button class="button button-secondary compact" type="button" data-remove-set>Remove</button>
         </div>
       </div>
@@ -8283,6 +8445,36 @@ function currentExerciseCardRestSeconds(card) {
   return card.querySelector("[data-rest-seconds]")?.value || "";
 }
 
+function currentSetRowWeight(row, fallbackWeight = null) {
+  const selectedWeight = normalizeSelectNumber(row?.querySelector("[data-set-weight]")?.value);
+  return selectedWeight ?? normalizeSelectNumber(fallbackWeight);
+}
+
+function lighterFollowupWeight(baseWeight = null) {
+  const normalizedBaseWeight = normalizeSelectNumber(baseWeight);
+  if (normalizedBaseWeight == null || normalizedBaseWeight <= 0) {
+    return normalizedBaseWeight;
+  }
+
+  return Math.max(0, roundToStep(normalizedBaseWeight * 0.85, 0.5));
+}
+
+function compressMainRowBreakForSuperset(row, preferredRestSeconds = 30) {
+  const restField = row?.querySelector("[data-set-log-rest-seconds]");
+  const normalizedPreferredRest = normalizeSelectNumber(preferredRestSeconds);
+  if (!restField || normalizedPreferredRest == null) {
+    return;
+  }
+
+  const currentRest = normalizeSelectNumber(restField.value) ?? normalizeSelectNumber(row.dataset.defaultRestSeconds);
+  if (currentRest != null && currentRest <= normalizedPreferredRest) {
+    return;
+  }
+
+  row.dataset.defaultRestSeconds = String(normalizedPreferredRest);
+  restField.value = String(normalizedPreferredRest);
+}
+
 function exerciseWorkUnitCount(exercise = {}) {
   if (Array.isArray(exercise?.setLogs) && exercise.setLogs.length) {
     return exercise.setLogs.length;
@@ -8629,7 +8821,11 @@ function appendExerciseFollowupRow(row, {
   defaultWeight = null,
   defaultSetSeconds = null,
   defaultRestSeconds = null,
-  defaultEffortPercent = null
+  defaultEffortPercent = null,
+  templateLabel = "Follow-up",
+  weightMode = "same",
+  weightValue = null,
+  bridgeRestSeconds = 30
 } = {}) {
   const container = row?.closest("[data-set-list]");
   if (!row || !container) {
@@ -8650,13 +8846,21 @@ function appendExerciseFollowupRow(row, {
     }
   });
 
+  compressMainRowBreakForSuperset(mainRow || row, bridgeRestSeconds);
+  const nextWeight = resolveSetTemplateAutoWeight({
+    weightMode,
+    weightValue
+  }, currentSetRowWeight(mainRow || row, defaultWeight));
+  const rowId = uid();
+
   insertAfter.insertAdjacentHTML("afterend", buildExerciseSetRowsMarkup([normalizeExerciseSetLog({
-    id: uid(),
+    id: rowId,
     rowType: "after-each",
     parentSetIndex,
-    templateLabel: "Follow-up",
-    weightMode: "same",
-    weight: normalizeSelectNumber(defaultWeight),
+    templateLabel,
+    weightMode,
+    weightValue,
+    weight: nextWeight ?? normalizeSelectNumber(defaultWeight),
     reps: null,
     effortPercent: normalizeSelectNumber(defaultEffortPercent),
     setSeconds: normalizeSelectNumber(defaultSetSeconds),
@@ -8665,6 +8869,7 @@ function appendExerciseFollowupRow(row, {
     rowType: "after-each"
   })], "", defaultWeight, defaultSetSeconds, defaultRestSeconds, defaultEffortPercent));
   renumberExerciseSetRows(container);
+  return container.querySelector(`[data-set-id="${rowId}"]`);
 }
 
 function removeExerciseSetRow(row) {

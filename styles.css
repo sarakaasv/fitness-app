@@ -941,6 +941,13 @@ textarea {
   justify-content: flex-end;
 }
 
+.exercise-set-followup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+}
+
 .exercise-target {
   font-size: 0.86rem;
   color: var(--muted);
@@ -1161,39 +1168,17 @@ textarea {
   font-weight: 700;
 }
 
-.coach-context-grid {
-  display: grid;
-  gap: 0.8rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.coach-context-pill {
-  display: grid;
-  gap: 0.45rem;
-  padding: 0.9rem;
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.45);
-  border: 1px solid rgba(28, 25, 20, 0.08);
-}
-
 .coach-chat-panel {
   display: grid;
   gap: 0.9rem;
 }
 
-.coach-chat-suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-}
-
-.coach-chat-chip {
-  padding: 0.55rem 0.8rem;
-  border-radius: 999px;
+.coach-chat-summary {
+  margin-top: -0.15rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 1rem;
   background: rgba(33, 110, 115, 0.08);
   border: 1px solid rgba(33, 110, 115, 0.12);
-  color: var(--sea);
-  font-size: 0.84rem;
 }
 
 .coach-chat-thread {
@@ -1985,8 +1970,7 @@ textarea {
   .field-grid.two-up,
   .metric-grid,
   .photo-import-summary-grid,
-  .coach-plan-metrics,
-  .coach-context-grid {
+  .coach-plan-metrics {
     grid-template-columns: 1fr;
   }
 
